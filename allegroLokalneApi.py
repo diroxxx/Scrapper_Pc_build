@@ -4,23 +4,21 @@ import re
 from bs4 import BeautifulSoup
 
 
-async def main():
-    browser = await uc.start(headless=False)
-    page = await browser.get(
-        "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/karty-graficzne-260019/q/rtx%204070?fromSuggestion=true")
-
-    await asyncio.sleep(5)
-
+CATEGORIES = {
+    "procesor": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/procesory-257222",
+    "karta graficzna": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/karty-graficzne-260019",
+    "ram": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/pamiec-ram-257226"
+}
 
 
-    # items = await page.select_all("a.mlc-card.mlc-itembox")
 
+
+async def scrape_category(page, category_name):
+    components = []
     html = await page.get_content()
-
-    # Parsowanie z BeautifulSoup
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("a.mlc-card.mlc-itembox")
-    print(f"🔍 Znaleziono {len(cards)} ofert:\n")
+    print(f"Znaleziono {len(cards)} ofert:\n")
 
     for i, item in enumerate(cards, start=1):
         try:
@@ -33,19 +31,25 @@ async def main():
             price = price_el.get_text(strip=True) if price_el else "-"
             currency = currency_el.get_text(strip=True) if currency_el else ""
 
-            loc_el = item.find("address")
-            location = loc_el.get_text(strip=True) if loc_el else "Brak lokalizacji"
 
             href = item.get("href", "")
             url = f"https://allegrolokalnie.pl{href}" if href else "Brak linku"
 
-            img =  item.select_one(".mlc-itembox__image__wrapper img")
+            img = item.select_one(".mlc-itembox__image__wrapper img")
             img_src = img.get("src", "Brak src")
+
+            components.append({
+                "category": category_name,
+                "name": title,
+                "price": price,
+                "status": 'used',
+                "img": img_src,
+                "url": url
+            })
 
 
             print(f"{i}. 🏷️ {title}")
             print(f"   💰 {price} {currency}")
-            print(f"   📍 {location}")
             print(f"   🔗 {url}")
             print(f"🖼️ Obrazek: {img_src}")
             print("-" * 50)
@@ -54,7 +58,23 @@ async def main():
             print(f"{i}. ❌ Błąd: {e}")
 
     await page.close()
+    return components
     # await browser.close()
+
+
+async def main():
+    all_components = []
+    browser = await uc.start(headless=True)
+
+    for category_name, url in CATEGORIES.items():
+        print(f"Pobieram kategorię: {category_name}")
+        page = await browser.get(url)
+        items = await scrape_category(page, category_name)
+        all_components.extend(items)
+
+    print(len(all_components))
+    return all_components
+
 
 if __name__ == "__main__":
     uc.loop().run_until_complete(main())

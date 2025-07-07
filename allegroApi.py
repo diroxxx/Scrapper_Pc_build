@@ -19,14 +19,16 @@ async def main():
     # Parsowanie z BeautifulSoup
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("article.mx7m_1")
-    print(f"🔍 Znaleziono {len(cards)} ofert:\n")
+    print(f"Znaleziono {len(cards)} ofert:\n")
 
     for i, item in enumerate(cards, start=1):
         try:
             print(item)
+            a_name = item.find("a")
+            print(a_name)
 
         except Exception as e:
-            print(f"{i}. ❌ Błąd: {e}")
+            print(f"{i}. Błąd: {e}")
 
     await page.close()
     # await browser.close()
