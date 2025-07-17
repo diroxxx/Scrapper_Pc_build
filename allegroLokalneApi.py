@@ -7,18 +7,26 @@ from bs4 import BeautifulSoup
 CATEGORIES = {
     "procesor": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/procesory-257222",
     "karta graficzna": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/karty-graficzne-260019",
-    "ram": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/pamiec-ram-257226"
+    "ram": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/pamiec-ram-257226",
+    "case": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/obudowy-259436",
+    "power_supply": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/zasilacze-259437",
+    "motherboard": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/plyty-glowne-4228",
+
 }
 
-
-
-
 async def scrape_category(page, category_name):
-    components = []
+    all_components = {cat: [] for cat in CATEGORIES}
+
+    # for i in range(17):
+    #     await page.evaluate("window.scrollBy(0, window.innerHeight);")
+    #     await asyncio.sleep(1)
+    await asyncio.sleep(5)
+
+
     html = await page.get_content()
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("a.mlc-card.mlc-itembox")
-    print(f"Znaleziono {len(cards)} ofert:\n")
+    # print(f"Znaleziono {len(cards)} ofert:\n")
 
     for i, item in enumerate(cards, start=1):
         try:
@@ -38,7 +46,7 @@ async def scrape_category(page, category_name):
             img = item.select_one(".mlc-itembox__image__wrapper img")
             img_src = img.get("src", "Brak src")
 
-            components.append({
+            all_components[category_name].append({
                 "category": category_name,
                 "name": title,
                 "price": price,
@@ -48,17 +56,18 @@ async def scrape_category(page, category_name):
             })
 
 
-            print(f"{i}. 🏷️ {title}")
-            print(f"   💰 {price} {currency}")
-            print(f"   🔗 {url}")
-            print(f"🖼️ Obrazek: {img_src}")
-            print("-" * 50)
+            # print(f"{i}. 🏷️ {title}")
+            # print(f"   💰 {price} {currency}")
+            # print(f"   🔗 {url}")
+            # print(f"🖼️ Obrazek: {img_src}")
+            # print("-" * 50)
 
         except Exception as e:
             print(f"{i}. ❌ Błąd: {e}")
 
-    await page.close()
-    return components
+    print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")  
+    # await page.close()
+    return all_components
     # await browser.close()
 
 
@@ -70,9 +79,9 @@ async def main():
         print(f"Pobieram kategorię: {category_name}")
         page = await browser.get(url)
         items = await scrape_category(page, category_name)
-        all_components.extend(items)
+        all_components.extend(items[category_name])
 
-    print(len(all_components))
+    print(f"Łącznie znaleziono {len(all_components)} ofert.")
     return all_components
 
 
