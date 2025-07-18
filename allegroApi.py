@@ -69,6 +69,7 @@ async def scrape_category(page, category_name):
                 "img": photo_url,
                 "url": website_url
             })
+        
     
         except Exception as e:
             print(f"{i}. Błąd: {e}")

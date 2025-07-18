@@ -12,8 +12,10 @@ def get_comp():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     data = loop.run_until_complete(olxApi.main())
+    
     if category in data:
         return jsonify(data[category])
+    
     else:
         return jsonify({"error": "Nieznana kategoria"}), 404
 
