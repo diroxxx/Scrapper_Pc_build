@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 
 
 CATEGORIES = {
-    "procesor": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/procesory-257222",
-    "karta graficzna": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/karty-graficzne-260019",
+    "processor": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/procesory-257222",
+    "graphics_card": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/karty-graficzne-260019",
     "ram": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/pamiec-ram-257226",
     "case": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/obudowy-259436",
     "power_supply": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/zasilacze-259437",

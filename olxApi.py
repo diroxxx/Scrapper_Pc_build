@@ -2,14 +2,15 @@ import asyncio
 import nodriver as uc
 import re
 from bs4 import BeautifulSoup
+from validComponentsApi.extract_details import extract_cpu_details, extract_gpu_details
 
 GPU_BRANDS = {
     "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "nvidia"
 }
 
 CATEGORIES = {
-    "procesor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
-    "karta graficzna": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
+    "processor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
+    "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
     "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
     "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
     "storage" : "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
@@ -47,23 +48,30 @@ async def scrape_category(page, category_name):
 
             link_tag = item.select_one("a.css-1tqlkj0")
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
+            comp = {
+                        "category": category_name,
+                        "name": title,
+                        # "brand": for brand in
+                        "price": price,
+                        "status": status,
+                        "img": img_src,
+                        "url": url
+                        }
+            
+            if category_name == "graphics_card":
+                comp.append(extract_gpu_details(title))
+            if category_name == "processor":
+                comp.append(extract_cpu_info(title))
+            
+            
+            # elif category_name == "processor":
+            #     comp = extract_cpu_details(title)
+            # else :
+            #     pass
+                 
+            all_components[category_name].append(comp)
 
-            # components.append({
-            #     "category": category_name,
-            #     "name": title,
-            #     "price": price,
-            #     "status": status,
-            #     "img": img_src,
-            #     "url": url
-            # })
-            all_components[category_name].append({
-                "category": category_name,
-                "name": title,
-                "price": price,
-                "status": status,
-                "img": img_src,
-                "url": url
-            })
+
 
         except Exception as e:
             print(f"Błąd w {category_name}: {e}")
