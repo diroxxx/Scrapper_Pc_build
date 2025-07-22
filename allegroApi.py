@@ -69,6 +69,9 @@ async def scrape_category(page, category_name):
                 "img": photo_url,
                 "url": website_url
             })
+            if(category_name == "procesor"):
+                print(f"{i}. {title} - {price} - {status_text} - {photo_url} - {website_url}")
+                print("---\n")
         
     
         except Exception as e:
@@ -76,6 +79,7 @@ async def scrape_category(page, category_name):
 
     print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
     # await page.close()
+    # print(all_components[category_name])
     return all_components
 
     # await browser.close()
@@ -94,7 +98,7 @@ async def main():
         items = await scrape_category(page, category_name)
         all_components.extend(items[category_name])
 
-    await browser.close()
+    browser.stop()
     print(len(all_components))
     return all_components
 
