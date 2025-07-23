@@ -5,7 +5,7 @@ import olxApi
 import allegroApi
 import allegroLokalneApi
 # import xkomApi  # Commented out as it's incomplete
-from validComponentsApi.extract_details import extract_cpu_details, extract_gpu_details
+from validComponentsApi.extract_details import extract_cpu_info
 
 app = Flask(__name__)
 
@@ -23,8 +23,7 @@ def get_components():
     # allegroApi_components = asyncio.run(allegroApi.main())
     # allegroLokalneApi_components = asyncio.run(allegroLokalneApi.main())
     # xkomApi_components = asyncio.run(xkomApi.main())  # Commented out
-    for category in CATEGORIES:
-        all_components[category].extend(olxApi_components[category])
+    # for category in CATEGORIES:
         # all_components[category].extend(allegroApi_components[category])
         # all_components[category].extend(allegroLokalneApi_components[category])
         # all_components[category].extend(xkomApi_components[category])  # Commented out
@@ -40,7 +39,8 @@ def get_components():
         
     
     # loop.close()
-    return jsonify(all_components)
+    # return jsonify(all_components)
+    return jsonify(olxApi_components)
 
 
 

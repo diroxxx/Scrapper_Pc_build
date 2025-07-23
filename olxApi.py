@@ -2,7 +2,7 @@ import asyncio
 import nodriver as uc
 import re
 from bs4 import BeautifulSoup
-from validComponentsApi.extract_details import extract_cpu_details, extract_gpu_details
+from validComponentsApi.extract_details import extract_gpu_details, extract_cpu_info
 
 GPU_BRANDS = {
     "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "nvidia"
@@ -59,15 +59,11 @@ async def scrape_category(page, category_name):
                         }
             
             if category_name == "graphics_card":
-                comp.append(extract_gpu_details(title))
+                comp.update(extract_gpu_details(title))
             if category_name == "processor":
-                comp.append(extract_cpu_info(title))
+                comp.update(extract_cpu_info(title))
             
-            
-            # elif category_name == "processor":
-            #     comp = extract_cpu_details(title)
-            # else :
-            #     pass
+
                  
             all_components[category_name].append(comp)
 

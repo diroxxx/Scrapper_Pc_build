@@ -6,8 +6,12 @@ GPU_BRANDS = {
 CPU_BRANDS = {
     "amd", "intel"
 }
+CASE_MODEL ={
+    "micro"
+}
 
-def extract_gpu_details(item: dict) -> dict:
+
+def extract_gpu_details(item: str) -> dict:
     parsed_gpus = {}
     # for item in gpu_items:
     name_lower = item.lower()
@@ -35,7 +39,7 @@ def extract_gpu_details(item: dict) -> dict:
         ]
     model = " ".join(model_parts).strip()
 
-    parsed_gpus.append({
+    return {
             "brand": brand,
             "model": model if model else None,
             # "condition": item["status"],
@@ -45,9 +49,8 @@ def extract_gpu_details(item: dict) -> dict:
             "memory_size": memory_size,
             "gddr": gddr_version,
             "power_draw": power_draw,
-        })
+        }
 
-    return parsed_gpus
 
 def extract_cpu_info(name: str) -> dict:
     """
@@ -93,3 +96,9 @@ def extract_cpu_info(name: str) -> dict:
         "model": model,
         "base_clock": base_clock
     }
+
+
+def extract_case_info(name: str) -> str:
+    case_type = None
+
+    return case_type
