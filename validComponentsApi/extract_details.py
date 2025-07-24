@@ -9,47 +9,47 @@ CPU_BRANDS = {
 CASE_MODEL ={
     "micro"
 }
+motherboard_format = {
+    "atx", "micro-atx", "mini-itx"
+    }
 
+case_format = {
+    "full tower", "mid tower", "mini tower", "micro tower"
+    }
 
 def extract_gpu_details(item: str) -> dict:
-    parsed_gpus = {}
-    # for item in gpu_items:
     name_lower = item.lower()
 
-        # Brand
+    # Brand
     brand = next((b for b in GPU_BRANDS if b in name_lower), None)
 
-        # Memory Size (e.g., 12GB, 8 GB)
+    # Memory Size (e.g., 12GB, 8 GB)
     mem_match = re.search(r"(\d{1,3})\s?gb", name_lower)
     memory_size = int(mem_match.group(1)) if mem_match else None
 
-        # GDDR Version
+    # GDDR Version
     gddr_match = re.search(r"gddr\d", name_lower)
     gddr_version = gddr_match.group(0).upper() if gddr_match else None
 
-        # Power draw — trudniejsze, często nie ma, można spróbować z "W"
+    # Power draw
     power_match = re.search(r"(\d{2,3})\s?w", name_lower)
     power_draw = int(power_match.group(1)) if power_match else None
 
-        # Model (usunę markę i inne znane ciągi, zostanie mniej więcej model)
-    name_parts = item["name"].split()
+    # Model (remove brand and other known strings)
+    name_parts = item.split()
     model_parts = [
-            part for part in name_parts
-            if part.lower() not in GPU_BRANDS and not re.search(r"(gb|gddr\d|w|stan)", part.lower())
-        ]
+        part for part in name_parts
+        if part.lower() not in GPU_BRANDS and not re.search(r"(gb|gddr\d|w|stan)", part.lower())
+    ]
     model = " ".join(model_parts).strip()
 
     return {
-            "brand": brand,
-            "model": model if model else None,
-            # "condition": item["status"],
-            # "photo_url": item["img"],
-            # "website_url": item["url"],
-            # "price" : item["price"],
-            "memory_size": memory_size,
-            "gddr": gddr_version,
-            "power_draw": power_draw,
-        }
+        "brand": brand,
+        "model": model if model else None,
+        "memory_size": memory_size,
+        "gddr": gddr_version,
+        "power_draw": power_draw,
+    }
 
 
 def extract_cpu_info(name: str) -> dict:
@@ -98,7 +98,109 @@ def extract_cpu_info(name: str) -> dict:
     }
 
 
-def extract_case_info(name: str) -> str:
-    case_type = None
+def extract_case_info(name: str) -> dict:
 
-    return case_type
+    #format(full tower, mini tower, micro tower)
+    format_match = re.search(r"(\w+\s*\w+)", name, re.IGNORECASE)
+    if format_match:
+        case_format = format_match.group(1).lower()
+    else:
+        case_format = None
+    
+    return {
+        "format": case_format
+    }
+
+def extract_ram_info(name: str) -> dict:
+    ram_info = {}
+
+    # RAM capacity
+    capacity_match = re.search(r"(\d+)\s*gb", name, re.IGNORECASE)
+    if capacity_match:
+        ram_info["capacity"] = int(capacity_match.group(1))
+    else:
+        ram_info["capacity"] = None
+
+    # RAM type
+    type_match = re.search(r"ddr\d", name, re.IGNORECASE)
+    if type_match:
+        ram_info["type"] = type_match.group(0).upper()
+    else: 
+        ram_info["type"] = None
+    
+    # RAM speed
+    speed_match = re.search(r"(\d{3,4})\s*mhz", name, re.IGNORECASE)
+    if speed_match:
+        ram_info["speed"] = f"{speed_match.group(1)}MHz"
+    else:
+        ram_info["speed"] = None
+    
+    # Latency
+    latency_match = re.search(r"cl\d+", name, re.IGNORECASE)
+    if latency_match:
+        ram_info["latency"] = latency_match.group(0).upper()
+    else:
+        ram_info["latency"] = None
+
+    return ram_info
+
+
+def extract_storage_info(name: str) -> dict:
+    #capacity
+    capacity_match = re.search(r"(\d+)\s*gb", name, re.IGNORECASE)
+    if capacity_match:
+        capacity = int(capacity_match.group(1))
+    else:
+        capacity = None
+    
+    return {
+        "capacity": capacity
+    }
+
+def extract_power_supply_info(name: str) -> dict:
+    #capacity
+    capacity_match = re.search(r"(\d+)\s*w", name, re.IGNORECASE)
+    if capacity_match:
+        capacity = int(capacity_match.group(1))
+    else:
+        capacity = None
+
+    return {
+        "capacity": capacity
+    }
+
+def extract_motherboard_info(name: str) -> dict:
+    # Chipset
+    chipset_match = re.search(r"b\d{3,4}", name, re.IGNORECASE)
+    if chipset_match:
+        chipset = chipset_match.group(0).upper()
+    else:
+        chipset = None
+    
+    # Socket type
+    socket_match = re.search(r"socket\s*(\w+)", name, re.IGNORECASE)
+    if socket_match:
+        socket = socket_match.group(1).upper()
+    else:
+        socket = None
+    
+    # Memory type
+    memory_match = re.search(r"ddr\d", name, re.IGNORECASE)
+    if memory_match:
+        memory = memory_match.group(0).upper()
+    else:
+        memory = None
+
+    # Format
+    format_match = re.search(r"atx|micro-atx|mini-itx", name, re.IGNORECASE)
+    if format_match:
+        form_factor = format_match.group(0).upper()
+    else:
+        form_factor = None
+        
+    return {
+        "chipset": chipset,
+        "socket": socket,
+        "memory_type": memory,
+        "form_factor": form_factor
+    }

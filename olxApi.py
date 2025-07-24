@@ -2,7 +2,15 @@ import asyncio
 import nodriver as uc
 import re
 from bs4 import BeautifulSoup
-from validComponentsApi.extract_details import extract_gpu_details, extract_cpu_info
+from validComponentsApi.extract_details import (
+    extract_gpu_details, 
+    extract_cpu_info, 
+    extract_case_info, 
+    extract_ram_info, 
+    extract_storage_info, 
+    extract_power_supply_info, 
+    extract_motherboard_info
+)
 
 GPU_BRANDS = {
     "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "nvidia"
@@ -49,20 +57,30 @@ async def scrape_category(page, category_name):
             link_tag = item.select_one("a.css-1tqlkj0")
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
             comp = {
-                        "category": category_name,
-                        "name": title,
-                        # "brand": for brand in
-                        "price": price,
-                        "status": status,
-                        "img": img_src,
-                        "url": url
-                        }
+                "category": category_name,
+                "name": title,
+                "price": price,
+                "status": status,
+                "img": img_src,
+                "url": url,
+                "shop": "olx"
+            }
             
+            # Apply extraction based on category
             if category_name == "graphics_card":
                 comp.update(extract_gpu_details(title))
-            if category_name == "processor":
+            elif category_name == "processor":
                 comp.update(extract_cpu_info(title))
-            
+            elif category_name == "case":
+                comp.update(extract_case_info(title))
+            elif category_name == "ram":
+                comp.update(extract_ram_info(title))
+            elif category_name == "storage":
+                comp.update(extract_storage_info(title))
+            elif category_name == "power_supply":
+                comp.update(extract_power_supply_info(title))
+            elif category_name == "motherboard":
+                comp.update(extract_motherboard_info(title))
 
                  
             all_components[category_name].append(comp)
@@ -80,13 +98,18 @@ async def main():
     all_components = []
     browser = await uc.start(headless=True)
 
-    for category_name, url in CATEGORIES.items():
-        print(f"Pobieram kategorię: {category_name}")
-        page = await browser.get(url)
-        items = await scrape_category(page, category_name)
-        all_components.extend(items[category_name])
-
-    print(len(all_components))
+    try:
+        for category_name, url in CATEGORIES.items():
+            print(f"Pobieram kategorię: {category_name}")
+            page = await browser.get(url)
+            items = await scrape_category(page, category_name)
+            all_components.extend(items[category_name])
+    finally:
+        # browser.stop() is not async, just call it normally
+        if browser:
+            browser.stop()
+    
+    print(f"Łącznie znaleziono {len(all_components)} komponentów")
     return all_components
 
 
