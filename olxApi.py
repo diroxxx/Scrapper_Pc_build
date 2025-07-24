@@ -18,7 +18,7 @@ GPU_BRANDS = {
 
 CATEGORIES = {
     "processor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
-    "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
+    "graphics_card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
     "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
     "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
     "storage" : "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
@@ -51,16 +51,33 @@ async def scrape_category(page, category_name):
             status_span = item.find("span", attrs={"title": "Używane"})
             status = status_span.getText(strip=True) if status_span else "Nieznany"
 
+            status_eng = None
+            if status == "Używane":
+                status_eng = "used"
+            elif status == "Nowe":
+                status_eng = "new"
+            else:
+                status_eng = "unknown"
+
+
             img_tag = item.select_one("img")
             img_src = str(img_tag.get("src", "")) if img_tag else ""
 
             link_tag = item.select_one("a.css-1tqlkj0")
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
+
+
+
+            # if status_eng == "unknown":
+            #     continue
+
+            
             comp = {
                 "category": category_name,
-                "name": title,
+                "brand": title,
+                "model": None,
                 "price": price,
-                "status": status,
+                "status": status_eng,
                 "img": img_src,
                 "url": url,
                 "shop": "olx"
@@ -84,8 +101,6 @@ async def scrape_category(page, category_name):
 
                  
             all_components[category_name].append(comp)
-
-
 
         except Exception as e:
             print(f"Błąd w {category_name}: {e}")

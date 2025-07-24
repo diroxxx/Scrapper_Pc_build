@@ -200,7 +200,8 @@ def extract_motherboard_info(name: str) -> dict:
         
     return {
         "chipset": chipset,
-        "socket": socket,
+        "socket_type": socket,
         "memory_type": memory,
-        "form_factor": form_factor
+        "format": form_factor
     }
+ 
