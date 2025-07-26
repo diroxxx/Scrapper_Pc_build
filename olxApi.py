@@ -3,14 +3,13 @@ import nodriver as uc
 import re
 from bs4 import BeautifulSoup
 from validComponentsApi.extract_details import (
-    extract_gpu_details, 
-    extract_cpu_info, 
-    extract_case_info, 
-    extract_ram_info, 
-    extract_storage_info, 
-    extract_power_supply_info, 
-    extract_motherboard_info
-)
+    extract_gpu_details,
+    extract_cpu_info,
+    extract_case_info,
+    extract_ram_info,
+    extract_storage_info,
+    extract_motherboard_info,
+    extract_power_supply_info)
 
 GPU_BRANDS = {
     "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "nvidia"
@@ -18,12 +17,12 @@ GPU_BRANDS = {
 
 CATEGORIES = {
     "processor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
-    "graphics_card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
+    "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
     "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
     "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
-    "storage" : "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
-    "power_Supply" : "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-zasilacz/",
-    "motherboard" : "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-płyta-główna/"
+    "storage": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
+    "power_supply": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-zasilacz/",
+    "motherboard": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-płyta-główna/"
 }
 
 
@@ -51,55 +50,46 @@ async def scrape_category(page, category_name):
             status_span = item.find("span", attrs={"title": "Używane"})
             status = status_span.getText(strip=True) if status_span else "Nieznany"
 
-            status_eng = None
-            if status == "Używane":
-                status_eng = "used"
-            elif status == "Nowe":
-                status_eng = "new"
-            else:
-                status_eng = "unknown"
-
-
             img_tag = item.select_one("img")
             img_src = str(img_tag.get("src", "")) if img_tag else ""
 
             link_tag = item.select_one("a.css-1tqlkj0")
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
 
+            status_eng = None
+            if status.lower() == "używane":
+                status_eng = "USED"
+            elif status.lower() == "nowe":
+                status_eng = "NEW"
+            else:
+                status_eng = "DEFECTIVE"
 
-
-            # if status_eng == "unknown":
-            #     continue
-
-            
             comp = {
                 "category": category_name,
-                "brand": title,
-                "model": None,
+                "brand": "",
+                "model": title,
                 "price": price,
                 "status": status_eng,
                 "img": img_src,
                 "url": url,
                 "shop": "olx"
             }
-            
-            # Apply extraction based on category
+
             if category_name == "graphics_card":
                 comp.update(extract_gpu_details(title))
-            elif category_name == "processor":
+            if category_name == "processor":
                 comp.update(extract_cpu_info(title))
-            elif category_name == "case":
+            if category_name == "case":
                 comp.update(extract_case_info(title))
-            elif category_name == "ram":
-                comp.update(extract_ram_info(title))
-            elif category_name == "storage":
+            if category_name == "storage":
                 comp.update(extract_storage_info(title))
-            elif category_name == "power_supply":
+            if category_name == "ram":
+                comp.update(extract_ram_info(title))
+            if category_name == "power_supply":
                 comp.update(extract_power_supply_info(title))
-            elif category_name == "motherboard":
+            if category_name == "motherboard":
                 comp.update(extract_motherboard_info(title))
 
-                 
             all_components[category_name].append(comp)
 
         except Exception as e:
@@ -113,18 +103,13 @@ async def main():
     all_components = []
     browser = await uc.start(headless=True)
 
-    try:
-        for category_name, url in CATEGORIES.items():
-            print(f"Pobieram kategorię: {category_name}")
-            page = await browser.get(url)
-            items = await scrape_category(page, category_name)
-            all_components.extend(items[category_name])
-    finally:
-        # browser.stop() is not async, just call it normally
-        if browser:
-            browser.stop()
-    
-    print(f"Łącznie znaleziono {len(all_components)} komponentów")
+    for category_name, url in CATEGORIES.items():
+        print(f"Pobieram kategorię: {category_name}")
+        page = await browser.get(url)
+        items = await scrape_category(page, category_name)
+        all_components.extend(items[category_name])
+
+    print(len(all_components))
     return all_components
 
 

@@ -1,7 +1,7 @@
 import re
 
 GPU_BRANDS = {
-    "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "nvidia"
+    "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "pny", "nvidia"
 }
 CPU_BRANDS = {
     "amd", "intel"

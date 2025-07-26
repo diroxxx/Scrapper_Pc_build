@@ -2,6 +2,15 @@ import asyncio
 import nodriver as uc
 import re
 from bs4 import BeautifulSoup
+from validComponentsApi.extract_details import (
+    extract_gpu_details,
+    extract_cpu_info,
+    extract_case_info,
+    extract_ram_info,
+    extract_storage_info,
+    extract_motherboard_info,
+    extract_power_supply_info)
+
 
 
 CATEGORIES = {
@@ -14,6 +23,7 @@ CATEGORIES = {
 
 }
 
+
 async def scrape_category(page, category_name):
     all_components = {cat: [] for cat in CATEGORIES}
 
@@ -21,7 +31,6 @@ async def scrape_category(page, category_name):
     #     await page.evaluate("window.scrollBy(0, window.innerHeight);")
     #     await asyncio.sleep(1)
     await asyncio.sleep(5)
-
 
     html = await page.get_content()
     soup = BeautifulSoup(html, "html.parser")
@@ -37,8 +46,6 @@ async def scrape_category(page, category_name):
             price_el = item.select_one(".ml-offer-price__dollars")
             currency_el = item.select_one(".ml-offer-price__currency")
             price = price_el.get_text(strip=True) if price_el else "-"
-            currency = currency_el.get_text(strip=True) if currency_el else ""
-
 
             href = item.get("href", "")
             url = f"https://allegrolokalnie.pl{href}" if href else "Brak linku"
@@ -46,29 +53,40 @@ async def scrape_category(page, category_name):
             img = item.select_one(".mlc-itembox__image__wrapper img")
             img_src = img.get("src", "Brak src")
 
-            all_components[category_name].append({
+            comp = {
                 "category": category_name,
-                "name": title,
+                "brand": "",
+                "model": title,
                 "price": price,
-                "status": 'used',
+                "status": "USED",
                 "img": img_src,
-                "url": url
-            })
+                "url": url,
+                "shop": "allegro_lokalnie"
+            }
 
+            if category_name == "graphics_card":
+                comp.update(extract_gpu_details(title))
+            if category_name == "processor":
+                comp.update(extract_cpu_info(title))
+            if category_name == "case":
+                comp.update(extract_case_info(title))
+            if category_name == "storage":
+                comp.update(extract_storage_info(title))
+            if category_name == "ram":
+                comp.update(extract_ram_info(title))
+            if category_name == "power_supply":
+                comp.update(extract_power_supply_info(title))
+            if category_name == "motherboard":
+                comp.update(extract_motherboard_info(title))
 
-            # print(f"{i}. 🏷️ {title}")
-            # print(f"   💰 {price} {currency}")
-            # print(f"   🔗 {url}")
-            # print(f"🖼️ Obrazek: {img_src}")
-            # print("-" * 50)
+            all_components[category_name].append(comp)
+
 
         except Exception as e:
-            print(f"{i}. ❌ Błąd: {e}")
+            print(f"{i}.Błąd: {e}")
 
-    print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")  
-    # await page.close()
+    print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
     return all_components
-    # await browser.close()
 
 
 async def main():
