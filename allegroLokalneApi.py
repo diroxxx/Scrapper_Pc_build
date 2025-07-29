@@ -45,7 +45,7 @@ async def scrape_category(page, category_name):
 
             price_el = item.select_one(".ml-offer-price__dollars")
             currency_el = item.select_one(".ml-offer-price__currency")
-            price = price_el.get_text(strip=True) if price_el else "-"
+            price = price_el.get_text(strip=True) if price_el else 0
 
             href = item.get("href", "")
             url = f"https://allegrolokalnie.pl{href}" if href else "Brak linku"
@@ -57,7 +57,7 @@ async def scrape_category(page, category_name):
                 "category": category_name,
                 "brand": "",
                 "model": title,
-                "price": price,
+                "price" : float (price),
                 "status": "USED",
                 "img": img_src,
                 "url": url,

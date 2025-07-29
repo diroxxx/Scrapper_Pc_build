@@ -45,8 +45,8 @@ async def scrape_category(page, category_name):
             price_tag = item.select_one('[data-testid="ad-price"]')
             price_text = price_tag.getText(strip=True)
             price_match = re.search(r"(\d[\d\s]*)\s*zł", price_text)
-            price = price_match.group(1).replace(" ", "") if price_match else "Brak ceny"
-
+            price = price_match.group(1).replace(" ", "") if price_match else 0
+            # print(price)
             status_span = item.find("span", attrs={"title": "Używane"})
             status = status_span.getText(strip=True) if status_span else "Nieznany"
 
@@ -68,7 +68,7 @@ async def scrape_category(page, category_name):
                 "category": category_name,
                 "brand": "",
                 "model": title,
-                "price": price,
+                "price" : float (price),
                 "status": status_eng,
                 "img": img_src,
                 "url": url,

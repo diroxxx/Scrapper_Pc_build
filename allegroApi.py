@@ -57,7 +57,7 @@ async def scrape_category(page, category_name):
 
                 # Wyciągnij samą cenę
                 price_match = re.search(r'(\d+[,.]?\d*)', price_text)
-                price = price_match.group(1) if price_match else "Brak ceny"
+                price = price_match.group(1) if price_match else 0
                 print(f"Cena: '{price}'")  # Powinno dać: "383,99"
 
             stan_label = item.find("span", string="Stan")
@@ -77,7 +77,7 @@ async def scrape_category(page, category_name):
                 "category": category_name,
                 "brand": "",
                 "model": title,
-                "price": price,
+                "price" : float (price),
                 "status": status_eng,
                 "img": photo_url,
                 "url": website_url,
