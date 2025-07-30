@@ -19,8 +19,7 @@ CATEGORIES = {
     "ram": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/pamiec-ram-257226",
     "case": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/obudowy-259436",
     "power_supply": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/zasilacze-259437",
-    "motherboard": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/plyty-glowne-4228",
-
+    "motherboard": "https://allegrolokalnie.pl/oferty/podzespoly-komputerowe/plyty-glowne-4228"
 }
 
 
@@ -57,7 +56,7 @@ async def scrape_category(page, category_name):
                 "category": category_name,
                 "brand": "",
                 "model": title,
-                "price" : float (price),
+                "price" : float(price),
                 "status": "USED",
                 "img": img_src,
                 "url": url,

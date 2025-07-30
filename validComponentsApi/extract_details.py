@@ -1,21 +1,120 @@
 import re
 
 GPU_BRANDS = {
-    "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "pny", "nvidia"
+    "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "pny",
+    "nvidia"
 }
 CPU_BRANDS = {
     "amd", "intel"
 }
-CASE_MODEL ={
-    "micro"
+MOTHERBOARD_BRANDS = {
+    "asus",
+    "msi",
+    "gigabyte",
+    "asrock",
+    "biostar",
+    "evga",
+    "acer",
+    "foxconn",
+    "supermicro",
+    "intel",
+    "colorful",
+    "nzxt",
+    "dfi"
 }
-motherboard_format = {
-    "atx", "micro-atx", "mini-itx"
-    }
+CASE_MODEL = {
+    "atx",
+    "micro-atx",
+    "mini-itx",
+    "e-atx",
+    "xl-atx",
+    "mini-dtx",
+    "pico-itx",
+    "nano-itx",
+    "flex-atx",
+    "thin mini-itx",
+    "micro-dtx",
+    "htpc",
+    "cube",
+    "tower",
+    "mid-tower",
+    "full-tower"
+}
+motherboard_format = [
+    "atx",
+    "micro-atx",
+    "mini-itx"
+]
 
 case_format = {
     "full tower", "mid tower", "mini tower", "micro tower"
-    }
+}
+CASE_BRANDS = {
+    "corsair", "fractal design", "nzxt", "cooler master", "thermaltake", "be quiet!", "phanteks",
+    "lian li", "silverstone", "antec", "deepcool", "bitfenix", "inwin", "rosewill", "zalman", "aerocool"
+    , "xigmatek", "chieftec", "sharkoon", "kolink", "msi", "endorfy"
+}
+
+POWER_SUPPLY_BRANDS = {
+    "corsair",
+    "seasonic",
+    "evga",
+    "be quiet!",
+    "cooler master",
+    "chieftec",
+    "thermaltake",
+    "silverstone",
+    "fractal design",
+    "msi",
+    "asus",
+    "gigabyte",
+    "antec",
+    "fsp",
+    "zalman",
+    "lc-power",
+    "sharkoon",
+    "aerocool"
+}
+RAM_BRANDS = {
+    "corsair",
+    "g.skill",
+    "kingston",
+    "crucial",
+    "adata",
+    "patriot",
+    "teamgroup",
+    "hyperx",
+    "ballistix",
+    "samsung",
+    "transcend",
+    "goodram",
+    "mushkin",
+    "pny",
+    "apacer",
+    "silicon power"
+}
+SSD_BRANDS = {
+    "samsung",
+    "crucial",
+    "kingston",
+    "wd",
+    "western Digital",
+    "seagate",
+    "corsair",
+    "adata",
+    "sandisk",
+    "intel",
+    "patriot",
+    "pny",
+    "transcend",
+    "toshiba",
+    "sk hynix",
+    "goodram",
+    "teamgroup",
+    "gigabyte",
+    "lexar",
+    "apacer"
+}
 
 def extract_gpu_details(item: str) -> dict:
     name_lower = item.lower()
@@ -97,111 +196,79 @@ def extract_cpu_info(name: str) -> dict:
         "base_clock": base_clock
     }
 
-
 def extract_case_info(name: str) -> dict:
-
-    #format(full tower, mini tower, micro tower)
-    format_match = re.search(r"(\w+\s*\w+)", name, re.IGNORECASE)
-    if format_match:
-        case_format = format_match.group(1).lower()
-    else:
-        case_format = None
-    
+    name_lower = name.lower()
+    brand = next((b for b in CASE_BRANDS if b in name_lower), None)
+    # Format (e.g. full tower, mid tower, etc.)
+    format_match = next((f for f in case_format if f in name_lower), None)
     return {
-        "format": case_format
+        "brand": brand,
+        "format": format_match
     }
 
+
 def extract_ram_info(name: str) -> dict:
+    name_lower = name.lower()
     ram_info = {}
-
+    brand = next((b for b in RAM_BRANDS if b in name_lower), None)
     # RAM capacity
-    capacity_match = re.search(r"(\d+)\s*gb", name, re.IGNORECASE)
-    if capacity_match:
-        ram_info["capacity"] = int(capacity_match.group(1))
-    else:
-        ram_info["capacity"] = None
-
+    capacity_match = re.search(r"(\d+)\s*gb", name_lower)
+    ram_info["capacity"] = int(capacity_match.group(1)) if capacity_match else None
     # RAM type
-    type_match = re.search(r"ddr\d", name, re.IGNORECASE)
-    if type_match:
-        ram_info["type"] = type_match.group(0).upper()
-    else: 
-        ram_info["type"] = None
-    
+    type_match = re.search(r"ddr\d", name_lower)
+    ram_info["type"] = type_match.group(0).upper() if type_match else None
     # RAM speed
-    speed_match = re.search(r"(\d{3,4})\s*mhz", name, re.IGNORECASE)
-    if speed_match:
-        ram_info["speed"] = f"{speed_match.group(1)}MHz"
-    else:
-        ram_info["speed"] = None
-    
+    speed_match = re.search(r"(\d{3,4})\s*mhz", name_lower)
+    ram_info["speed"] = f"{speed_match.group(1)}MHz" if speed_match else None
     # Latency
-    latency_match = re.search(r"cl\d+", name, re.IGNORECASE)
-    if latency_match:
-        ram_info["latency"] = latency_match.group(0).upper()
-    else:
-        ram_info["latency"] = None
-
+    latency_match = re.search(r"cl\d+", name_lower)
+    ram_info["latency"] = latency_match.group(0).upper() if latency_match else None
+    ram_info["brand"] = brand
     return ram_info
 
 
 def extract_storage_info(name: str) -> dict:
-    #capacity
-    capacity_match = re.search(r"(\d+)\s*gb", name, re.IGNORECASE)
-    if capacity_match:
-        capacity = int(capacity_match.group(1))
-    else:
-        capacity = None
-    
+    name_lower = name.lower()
+    brand = next((b for b in SSD_BRANDS if b in name_lower), None)
+    # Capacity
+    capacity_match = re.search(r"(\d+)\s*gb", name_lower)
+    capacity = int(capacity_match.group(1)) if capacity_match else None
     return {
+        "brand": brand,
         "capacity": capacity
     }
+
 
 def extract_power_supply_info(name: str) -> dict:
-    #capacity
-    capacity_match = re.search(r"(\d+)\s*w", name, re.IGNORECASE)
-    if capacity_match:
-        capacity = int(capacity_match.group(1))
-    else:
-        capacity = None
-
+    name_lower = name.lower()
+    brand = next((b for b in POWER_SUPPLY_BRANDS if b in name_lower), None)
+    # Capacity
+    capacity_match = re.search(r"(\d+)\s*w", name_lower)
+    capacity = int(capacity_match.group(1)) if capacity_match else None
     return {
+        "brand": brand,
         "capacity": capacity
     }
 
-def extract_motherboard_info(name: str) -> dict:
-    # Chipset
-    chipset_match = re.search(r"b\d{3,4}", name, re.IGNORECASE)
-    if chipset_match:
-        chipset = chipset_match.group(0).upper()
-    else:
-        chipset = None
-    
-    # Socket type
-    socket_match = re.search(r"socket\s*(\w+)", name, re.IGNORECASE)
-    if socket_match:
-        socket = socket_match.group(1).upper()
-    else:
-        socket = None
-    
-    # Memory type
-    memory_match = re.search(r"ddr\d", name, re.IGNORECASE)
-    if memory_match:
-        memory = memory_match.group(0).upper()
-    else:
-        memory = None
 
+def extract_motherboard_info(name: str) -> dict:
+    name_lower = name.lower()
+    brand = next((b for b in MOTHERBOARD_BRANDS if b in name_lower), None)  # Many MBs have same brands as cases
+    # Chipset
+    chipset_match = re.search(r"b\d{3,4}", name_lower)
+    chipset = chipset_match.group(0).upper() if chipset_match else None
+    # Socket type
+    socket_match = re.search(r"socket\s*(\w+)", name_lower)
+    socket = socket_match.group(1).upper() if socket_match else None
+    # Memory type
+    memory_match = re.search(r"ddr\d", name_lower)
+    memory = memory_match.group(0).upper() if memory_match else None
     # Format
-    format_match = re.search(r"atx|micro-atx|mini-itx", name, re.IGNORECASE)
-    if format_match:
-        form_factor = format_match.group(0).upper()
-    else:
-        form_factor = None
-        
+    format_match = next((f for f in motherboard_format if f in name_lower), None)
     return {
+        "brand": brand,
         "chipset": chipset,
         "socket_type": socket,
         "memory_type": memory,
-        "format": form_factor
+        "format": format_match
     }
- 

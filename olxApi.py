@@ -56,6 +56,9 @@ async def scrape_category(page, category_name):
             link_tag = item.select_one("a.css-1tqlkj0")
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
 
+
+
+
             status_eng = None
             if status.lower() == "używane":
                 status_eng = "USED"
