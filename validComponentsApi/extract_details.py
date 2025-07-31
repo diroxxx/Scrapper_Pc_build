@@ -160,14 +160,18 @@ def extract_brand_from_cpu(title: str) -> dict:
     }
 
 
+def extract_brand_from_gpu(title: str) -> str:
+    return next((b for b in GPU_BRANDS if b in str.lower(title)), None)
+
+
 def extract_info_from_gpu(title: str) -> dict:
-    brand = next((b for b in GPU_BRANDS if b in str.lower(title)), None)
-    model = None
-    if brand is not None:
-        model = title.replace(brand, "") if brand else title.lower()
+    lower_title = title.lower()
+    brand =  next((b for b in GPU_BRANDS if b in str.lower(title)), None)
+    model = lower_title.replace(brand, "") if brand else lower_title
+    model = model.replace("core", "")
     return {
         "brand": brand,
-        "model": model
+        "model": model.strip(),
     }
 
 

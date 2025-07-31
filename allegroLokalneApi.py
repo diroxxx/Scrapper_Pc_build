@@ -3,8 +3,9 @@ import nodriver as uc
 import re
 from bs4 import BeautifulSoup
 from validComponentsApi.extract_details import (
-     extract_info_from_gpu, extract_brand_from_cpu, extract_brand_from_case, extract_brand_from_ssd,
-    extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard
+    extract_brand_from_gpu, extract_brand_from_cpu, extract_brand_from_case, extract_brand_from_ssd,
+    extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard,
+    extract_info_from_gpu
 )
 
 
@@ -32,6 +33,7 @@ async def scrape_category(page, category_name):
     # print(f"Znaleziono {len(cards)} ofert:\n")
 
     for i, item in enumerate(cards, start=1):
+        price = 0
         try:
             # h3 = await item.query_selector("h3.mlc-itembox__title")
             title_el = item.find("h3", class_="mlc-itembox__title")
@@ -39,7 +41,7 @@ async def scrape_category(page, category_name):
 
             price_el = item.select_one(".ml-offer-price__dollars")
             price = price_el.get_text(strip=True) if price_el else 0
-            # print(price)
+            # print(price)/
             href = item.get("href", "")
             url = f"https://allegrolokalnie.pl{href}" if href else "Brak linku"
 

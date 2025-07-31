@@ -3,8 +3,9 @@ import nodriver as uc
 import re
 from bs4 import BeautifulSoup
 from validComponentsApi.extract_details import (
-     extract_info_from_gpu, extract_brand_from_cpu, extract_brand_from_case, extract_brand_from_ssd,
-    extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard
+    extract_brand_from_gpu, extract_brand_from_cpu, extract_brand_from_case, extract_brand_from_ssd,
+    extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard,
+extract_info_from_gpu
 )
 
 GPU_BRANDS = {

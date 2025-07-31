@@ -4,7 +4,7 @@ import re
 from bs4 import BeautifulSoup
 from validComponentsApi.extract_details import (
     extract_brand_from_cpu,
-    extract_info_from_gpu,
+    extract_brand_from_gpu,
     extract_brand_from_case,
     extract_brand_from_power_supply,
     extract_brand_from_motherboard,
@@ -53,7 +53,7 @@ async def scrape_category(page, category_name):
                 # comp["threads"] = item.select_one("span.threads").text
 
             if category_name == "graphics_card":
-                comp["brand"] = extract_info_from_gpu(title)
+                comp["brand"] = extract_brand_from_gpu(title)
                 comp["model"] =  re.sub(r"\s*\([^)]*\)", "", item.select_one("span.series").text).strip()
                 comp["vram"] = item.select_one("span.vram").text
                 comp["gddr"] = None

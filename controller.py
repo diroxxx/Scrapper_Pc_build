@@ -28,18 +28,18 @@ def get_comp():
         asyncio.set_event_loop(loop)
         print("Starting to scrape OLX...")
         data_olx = loop.run_until_complete(olxApi.main())
-        # print("Starting to scrape Allegro lokalne...")
-        # data_allegro_lokalnie = loop.run_until_complete(allegroLokalneApi.main())
-        # print("Starting to scrape Allegro...")
-        # data_allegro = loop.run_until_complete(allegroApi.main())
+        print("Starting to scrape Allegro lokalne...")
+        data_allegro_lokalnie = loop.run_until_complete(allegroLokalneApi.main())
+        print("Starting to scrape Allegro...")
+        data_allegro = loop.run_until_complete(allegroApi.main())
         loop.close()
 
         end_time = time.perf_counter()
         execution_time = end_time - start_time
 
         print(f"OLX returned {len(data_olx)} total items")
-        # print(f"allegroLok returned {len(data_allegro_lokalnie)} total items")
-        # print(f"allegro returned {len(data_allegro)} total items")
+        print(f"allegroLok returned {len(data_allegro_lokalnie)} total items")
+        print(f"allegro returned {len(data_allegro)} total items")
         print(f"Total execution time: {execution_time:.2f} seconds")
         print(f"Total execution time: {execution_time / 60:.2f} minutes")
 
@@ -47,8 +47,8 @@ def get_comp():
         # Merge into all_components
         for cat in CATEGORIES:
             all_components[cat].extend([item for item in data_olx if item['category'] == cat])
-            # all_components[cat].extend([item for item in data_allegro_lokalnie if item['category'] == cat])
-            # all_components[cat].extend([item for item in data_allegro if item['category'] == cat])
+            all_components[cat].extend([item for item in data_allegro_lokalnie if item['category'] == cat])
+            all_components[cat].extend([item for item in data_allegro if item['category'] == cat])
 
         return jsonify(all_components)
 
@@ -61,10 +61,12 @@ def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy", "message": "PC Build Scraper API is running"})
 
-
+import logging
 @app.route('/', methods=['GET'])
 def home():
     """API documentation endpoint"""
+
+    logging.warning("Request received!")
     return jsonify({
         "message": "PC Build Scraper API",
         "endpoints": {
