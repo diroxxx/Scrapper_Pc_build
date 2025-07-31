@@ -60,32 +60,35 @@ async def scrape_category(page, category_name):
                 comp["power_draw"] = None
 
             if category_name == "case":
-                # comp["brand"] = extract_brand_from_case(title)
                 comp["format"] = item.select_one("span.size").text.lower()
-                tmp = extract_brand_from_cpu(title)
-                comp["brand"] = tmp["brand"]
-                comp["model"] = tmp["model"]
+                comp.update(extract_brand_from_case(title))
+
             if category_name == "ssd":
                 comp.update(extract_brand_from_ssd(title))
                 comp["capacity"] = item.select_one("span.size").text
 
             if category_name == "ram":
                 comp.update(extract_brand_from_ram(title))
-                comp["capacity"] = item.select_one("span.size").text
+                size_text = item.select_one("span.size").text
+                clean_capacity = re.sub(r"\s*gb\s*", "", size_text, flags=re.IGNORECASE)
+                comp["capacity"] = int (clean_capacity)
                 tmp = item.select_one("span.type").text
+                # do poprawy
                 if "-" in tmp:
                     type_part, speed_part = tmp.strip().upper().split("-")
                     comp["type"]: type_part
                     comp["speed"]: speed_part
+
                 comp["latency"] = None
 
             if category_name == "power_supply":
                 comp.update(extract_brand_from_power_supply(title))
-                comp["maxPowerWatt"] = item.select_one("span.watt").text
+                # if comp["brand"] is not None:
+                comp["maxPowerWatt"] = int (item.select_one("span.watt").text.replace("W", ""))
 
             if category_name == "motherboard":
                 comp.update(extract_brand_from_motherboard(title))
-                comp["socket"] = item.select_one("span.socket").text
+                comp["socket_motherboard"] = item.select_one("span.socket").text
                 comp["format"] = item.select_one("span.size").text
                 comp["chipset"] = item.select_one("span.chipset").text
 
@@ -95,16 +98,17 @@ async def scrape_category(page, category_name):
                 tmp = item.select_one("span.sockets").text
                 pattern = r"\b(?:\d{3,4}(?:-v\d)?|am\d\+?|fm\d\+?)\b"
                 sockets = re.findall(pattern, tmp.lower())
-                comp["socket"] = sockets
+                comp["sockets"] = sockets
 
             # print(comp)
             # print("\n")
-            all_components[category_name].append(comp)
+            if comp["brand"] is not None or comp["model"] is not None:
+                comp["category"] = category_name
+                all_components[category_name].append(comp)
 
         except Exception as e:
             print(f"{i}. Błąd: {e}")
-
-    print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
+    print(len(all_components[category_name]))
     return all_components
 
 
@@ -119,7 +123,7 @@ async def main():
         all_components.extend(items[category_name])
 
     browser.stop()
-    # print(len(all_components))
+    print(len(all_components))
     return all_components
 
 

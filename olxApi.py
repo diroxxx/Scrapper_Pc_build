@@ -3,13 +3,9 @@ import nodriver as uc
 import re
 from bs4 import BeautifulSoup
 from validComponentsApi.extract_details import (
-    extract_gpu_details,
-    extract_cpu_info,
-    extract_case_info,
-    extract_ram_info,
-    extract_storage_info,
-    extract_motherboard_info,
-    extract_power_supply_info)
+     extract_info_from_gpu, extract_brand_from_cpu, extract_brand_from_case, extract_brand_from_ssd,
+    extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard
+)
 
 GPU_BRANDS = {
     "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "nvidia"
@@ -43,6 +39,7 @@ async def scrape_category(page, category_name):
             title = item.find("h4", class_="css-1g61gc2").getText(strip=True)
 
             price_tag = item.select_one('[data-testid="ad-price"]')
+            # print(price_tag)
             price_text = price_tag.getText(strip=True)
             price_match = re.search(r"(\d[\d\s]*)\s*zł", price_text)
             price = price_match.group(1).replace(" ", "") if price_match else 0
@@ -57,8 +54,6 @@ async def scrape_category(page, category_name):
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
 
 
-
-
             status_eng = None
             if status.lower() == "używane":
                 status_eng = "USED"
@@ -69,8 +64,8 @@ async def scrape_category(page, category_name):
 
             comp = {
                 "category": category_name,
-                "brand": "",
-                "model": title,
+                # "brand": "",
+                # "model": title,
                 "price" : float (price),
                 "status": status_eng,
                 "img": img_src,
@@ -79,19 +74,19 @@ async def scrape_category(page, category_name):
             }
 
             if category_name == "graphics_card":
-                comp.update(extract_gpu_details(title))
+                comp.update(extract_info_from_gpu(title))
             if category_name == "processor":
-                comp.update(extract_cpu_info(title))
+                comp.update(extract_brand_from_cpu(title))
             if category_name == "case":
-                comp.update(extract_case_info(title))
+                comp.update(extract_brand_from_case(title))
             if category_name == "storage":
-                comp.update(extract_storage_info(title))
+                comp.update(extract_brand_from_ssd(title))
             if category_name == "ram":
-                comp.update(extract_ram_info(title))
+                comp.update(extract_brand_from_ram(title))
             if category_name == "power_supply":
-                comp.update(extract_power_supply_info(title))
+                comp.update(extract_brand_from_power_supply(title))
             if category_name == "motherboard":
-                comp.update(extract_motherboard_info(title))
+                comp.update(extract_brand_from_motherboard(title))
 
             all_components[category_name].append(comp)
 
