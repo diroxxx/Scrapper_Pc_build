@@ -23,7 +23,6 @@ def get_comp():
     start_time = time.perf_counter()
 
     try:
-
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         print("Starting to scrape OLX...")

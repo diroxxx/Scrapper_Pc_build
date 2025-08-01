@@ -16,12 +16,12 @@ extract_info_from_gpu
 
 CATEGORIES = {
     "processor": "https://allegro.pl/kategoria/podzespoly-komputerowe-procesory-257222",
-    "graphics_card": "https://allegro.pl/kategoria/podzespoly-komputerowe-karty-graficzne-260019",
-    "ram": "https://allegro.pl/kategoria/podzespoly-komputerowe-pamiec-ram-257226",
-    "case": "https://allegro.pl/kategoria/podzespoly-komputerowe-obudowy-259436",
-    "storage": "https://allegro.pl/kategoria/dyski-i-pamieci-przenosne-dyski-ssd-257335",
-    "power_supply": "https://allegro.pl/kategoria/podzespoly-komputerowe-zasilacze-259437",
-    "motherboard": "https://allegro.pl/kategoria/podzespoly-komputerowe-plyty-glowne-4228"
+    # "graphics_card": "https://allegro.pl/kategoria/podzespoly-komputerowe-karty-graficzne-260019",
+    # "ram": "https://allegro.pl/kategoria/podzespoly-komputerowe-pamiec-ram-257226",
+    # "case": "https://allegro.pl/kategoria/podzespoly-komputerowe-obudowy-259436",
+    # "storage": "https://allegro.pl/kategoria/dyski-i-pamieci-przenosne-dyski-ssd-257335",
+    # "power_supply": "https://allegro.pl/kategoria/podzespoly-komputerowe-zasilacze-259437",
+    # "motherboard": "https://allegro.pl/kategoria/podzespoly-komputerowe-plyty-glowne-4228"
 
 }
 
@@ -53,18 +53,21 @@ async def scrape_category(page, category_name):
             website_url_a = item.find("a")
             website_url = website_url_a["href"] if website_url_a else "Brak linku do strony"
 
+
+            price = 0
             price_element = item.find("span", class_="mli8_k4 msa3_z4 mqu1_1 mp0t_ji m9qz_yo mgn2_27 mgn2_30_s mgmw_g5")
             if price_element:
                 price_text = price_element.get_text(strip=True)
-                # print(f"Pełny tekst: '{price_text}'")  # Powinno dać: "383,99 zł"
+                print(f"Pełny tekst: '{price_text}'")  # Powinno dać: "383,99 zł"
 
                 # Wyciągnij samą cenę
                 price_match = re.search(r'(\d+[,.]?\d*)', price_text)
                 price = price_match.group(1) if price_match else 0
                 price = price.replace(",", ".")
-
-                # print(f"Cena: '{price}'")
-
+                # price = float(price)
+                print(f"Cena: '{ float (price)}'")
+            else:
+                print(price_element)
             stan_label = item.find("span", string="Stan")
             status = stan_label.find_next_sibling("span") if stan_label else None
             status_text = status.text.strip() if status else "Brak statusu"
@@ -80,7 +83,7 @@ async def scrape_category(page, category_name):
 
 
             comp = {
-                # "category": category_name,
+                "category": category_name,
                 # "brand": "",
                 "model": title,
                 "price" : float (price),
@@ -109,14 +112,11 @@ async def scrape_category(page, category_name):
             # print("\n")
             all_components[category_name].append(comp)
 
-
-
         except Exception as e:
             print(f"{i}. Błąd: {e}")
 
     print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
     return all_components
-
 
 async def main():
     all_components = []
