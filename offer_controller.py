@@ -15,7 +15,7 @@ CATEGORIES = [
     "processor", "graphics_card", "ram", "case", "storage", "power_supply", "motherboard"
 ]
 
-@app.route('/offers', methods=['GET'])
+@app.route('/installComponents', methods=['GET'])
 def get_comp():
     """Get components from OLX organized by category"""
     all_components = {cat: [] for cat in CATEGORIES}

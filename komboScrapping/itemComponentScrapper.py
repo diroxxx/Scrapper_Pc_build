@@ -1,7 +1,13 @@
 import asyncio
-import nodriver as uc
 import re
 from bs4 import BeautifulSoup
+import nodriver as uc
+import sys
+import os
+
+# Add parent directory to Python path to find validComponentsApi
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from validComponentsApi.extract_details import (
     extract_brand_from_cpu,
     extract_brand_from_gpu,
@@ -10,8 +16,7 @@ from validComponentsApi.extract_details import (
     extract_brand_from_motherboard,
     extract_brand_from_cpu_cooler,
     extract_brand_from_ram,
-    extract_brand_from_ssd,
-
+    extract_brand_from_ssd
 )
 
 CATEGORIES = {
@@ -29,6 +34,7 @@ media_types = ["nvme", "sata", "ssd", "solid state drive", "hdd", "m.2"]
 
 async def scrape_category(page, category_name):
     all_components = {cat: [] for cat in CATEGORIES}
+    await asyncio.sleep(5)
 
     html = await page.get_content()
     soup = BeautifulSoup(html, "html.parser")
@@ -43,29 +49,68 @@ async def scrape_category(page, category_name):
             # print(title)
             title = title.lower()
             if category_name == "processor":
-                # comp["brand"] = extract_brand_from_cpu(title)
-
-                comp["socket"] = item.select_one("span.socket").text
-                comp["cores"] = item.select_one("span.cores").text
                 tmp = extract_brand_from_cpu(title)
                 comp["brand"] = tmp["brand"]
                 comp["model"] = tmp["model"]
-                # comp["threads"] = item.select_one("span.threads").text
+                comp["socket"] = item.select_one("span.socket").text
+                comp["cores"] = item.select_one("span.cores").text
+
+                # Extract threads and base clock from spans without class
+                subtitle_div = item.select_one("div.subtitle")
+                threads = None
+                base_clock = None
+                if subtitle_div:
+                    spans = subtitle_div.find_all("span")
+                    for span in spans:
+                        if span.get("class") is None:
+                            if "Threads" in span.text:
+                                threads_match = re.search(r'(\d+)\s*Threads', span.text)
+                                if threads_match:
+                                    threads = threads_match.group(1)
+                            elif "Clock" in span.text and "GHz" in span.text:
+                                clock_match = re.search(r'Clock\s+([\d.]+)\s*GHz', span.text)
+                                if clock_match:
+                                    base_clock = float(clock_match.group(1))
+                comp["threads"] = threads
+                comp["base_clock"] = base_clock
+                # print(f"Processor: {comp}")
 
             if category_name == "graphics_card":
+                print(title)
                 comp["brand"] = extract_brand_from_gpu(title)
                 comp["model"] =  re.sub(r"\s*\([^)]*\)", "", item.select_one("span.series").text).strip()
                 comp["vram"] = item.select_one("span.vram").text
                 comp["gddr"] = None
-                comp["power_draw"] = None
+                
+                # Extract power draw from span without class
+                subtitle_div = item.select_one("div.subtitle")
+                power_draw = None
+                if subtitle_div:
+                    spans = subtitle_div.find_all("span")
+                    for span in spans:
+                        if span.get("class") is None and "W" in span.text:
+                            power_match = re.search(r'(\d+)W', span.text)
+                            if power_match:
+                                power_draw = int(power_match.group(1))
+                            break
+                comp["power_draw"] = power_draw
+                
+                # print(f"Graphics Card: {comp}")
 
             if category_name == "case":
                 comp["format"] = item.select_one("span.size").text.lower()
                 comp.update(extract_brand_from_case(title))
+                # print(f"Case: {comp}")
 
             if category_name == "ssd":
+
                 comp.update(extract_brand_from_ssd(title))
-                comp["capacity"] = item.select_one("span.size").text
+                
+                # Remove GB and convert to float
+                capacity_text = item.select_one("span.size").text
+                capacity_clean = re.sub(r'\s*gb\s*', '', capacity_text, flags=re.IGNORECASE).strip()
+                comp["capacity"] = float(capacity_clean)
+                # print(f"SSD: {comp}")
 
             if category_name == "ram":
                 comp.update(extract_brand_from_ram(title))
@@ -76,21 +121,23 @@ async def scrape_category(page, category_name):
                 # do poprawy
                 if "-" in tmp:
                     type_part, speed_part = tmp.strip().upper().split("-")
-                    comp["type"]: type_part
-                    comp["speed"]: speed_part
+                    comp["type"] = type_part
+                    comp["speed"] = speed_part
 
                 comp["latency"] = None
+                # print(f"RAM: {comp}")
 
             if category_name == "power_supply":
                 comp.update(extract_brand_from_power_supply(title))
-                # if comp["brand"] is not None:
                 comp["maxPowerWatt"] = int (item.select_one("span.watt").text.replace("W", ""))
+                # print(f"Power Supply: {comp}")
 
             if category_name == "motherboard":
                 comp.update(extract_brand_from_motherboard(title))
                 comp["socket_motherboard"] = item.select_one("span.socket").text
                 comp["format"] = item.select_one("span.size").text
                 comp["chipset"] = item.select_one("span.chipset").text
+                # print(f"Motherboard: {comp}")
 
             if category_name == "cpu_cooler":
                 comp.update(extract_brand_from_cpu_cooler(title))
@@ -99,11 +146,13 @@ async def scrape_category(page, category_name):
                 pattern = r"\b(?:\d{3,4}(?:-v\d)?|am\d\+?|fm\d\+?)\b"
                 sockets = re.findall(pattern, tmp.lower())
                 comp["sockets"] = sockets
+                # print(f"CPU Cooler: {comp}")
 
             # print(comp)
             # print("\n")
-            if comp["brand"] is not None or comp["model"] is not None:
+            if comp["brand"] is not None:
                 comp["category"] = category_name
+                print(f"Adding component: {comp}")
                 all_components[category_name].append(comp)
 
         except Exception as e:
