@@ -16,13 +16,13 @@ from validComponentsApi.extract_details import (
 
 CATEGORIES = {
     "processor": "https://pcpartpicker.com/products/cpu/",
-    # "graphics_card": "https://pcpartpicker.com/products/video-card/",
-    # "ram": "https://pcpartpicker.com/products/memory/",
-    # "case": "https://pcpartpicker.com/products/case/",
-    # "storage": "https://pcpartpicker.com/products/internal-hard-drive/",
-    # "power_supply": "https://pcpartpicker.com/products/power-supply/",
-    # "motherboard": "https://pcpartpicker.com/products/motherboard/",
-    # "cpu_cooler": "https://pcpartpicker.com/products/cpu-cooler/"
+    "graphics_card": "https://pcpartpicker.com/products/video-card/",
+    "ram": "https://pcpartpicker.com/products/memory/",
+    "case": "https://pcpartpicker.com/products/case/",
+    "storage": "https://pcpartpicker.com/products/internal-hard-drive/",
+    "power_supply": "https://pcpartpicker.com/products/power-supply/",
+    "motherboard": "https://pcpartpicker.com/products/motherboard/",
+    "cpu_cooler": "https://pcpartpicker.com/products/cpu-cooler/"
 
 }
 
