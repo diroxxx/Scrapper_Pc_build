@@ -26,8 +26,8 @@ CATEGORIES = {
     "case": "https://www.pc-kombo.com/ca/components/cases",
     "ssd": "https://www.pc-kombo.com/ca/components/ssds",
     "power_supply": "https://www.pc-kombo.com/ca/components/psus",
-    "motherboard": "https://www.pc-kombo.com/ca/components/motherboards",
-    "cpu_cooler": "https://www.pc-kombo.com/ca/components/cpucoolers"
+    "cpu_cooler": "https://www.pc-kombo.com/ca/components/cpucoolers",
+    "motherboard": "https://www.pc-kombo.com/ca/components/motherboards"
 }
 media_types = ["nvme", "sata", "ssd", "solid state drive", "hdd", "m.2"]
 
@@ -76,7 +76,7 @@ async def scrape_category(page, category_name):
                 # print(f"Processor: {comp}")
 
             if category_name == "graphics_card":
-                print(title)
+                # print(title)
                 comp["brand"] = extract_brand_from_gpu(title)
                 comp["model"] =  re.sub(r"\s*\([^)]*\)", "", item.select_one("span.series").text).strip()
                 comp["vram"] = item.select_one("span.vram").text
@@ -133,11 +133,108 @@ async def scrape_category(page, category_name):
                 # print(f"Power Supply: {comp}")
 
             if category_name == "motherboard":
+
+                # Limit to first 50 offers for testing
+                if i > 100:
+                    break
+                
                 comp.update(extract_brand_from_motherboard(title))
                 comp["socket_motherboard"] = item.select_one("span.socket").text
                 comp["format"] = item.select_one("span.size").text
                 comp["chipset"] = item.select_one("span.chipset").text
-                # print(f"Motherboard: {comp}")
+                
+                # Extract link to detailed page
+                link_element = item.find("a")
+                if link_element and link_element.get("href"):
+                    detail_url = link_element["href"]
+                    if not detail_url.startswith("http"):
+                        detail_url = "https://www.pc-kombo.com" + detail_url
+                    
+                    # Navigate to detailed page
+                    try:
+                        detail_page = await page.browser.get(detail_url)
+                        await asyncio.sleep(1)  # Wait longer for page to load
+                        
+                        detail_html = await detail_page.get_content()
+                        detail_soup = BeautifulSoup(detail_html, "html.parser")
+                        
+                        # Check for card-body elements
+                        card_bodies = detail_soup.select("div.card-body")
+                        
+                        # Try different selectors for the memory information
+                        memory_info_found = False
+                        
+                        # Method 1: Look for card-body with dl elements
+                        for card_body in card_bodies:
+                            dl_elements = card_body.find_all("dl")
+                            
+                            for dl in dl_elements:
+                                dt_elements = dl.find_all("dt")
+                                dd_elements = dl.find_all("dd")
+                                
+                                for dt, dd in zip(dt_elements, dd_elements):
+                                    dt_text = dt.text.strip()
+                                    dd_text = dd.text.strip()
+                                    
+                                    if dt_text == "Memory Type":
+                                        comp["memory_type"] = dd_text
+                                        memory_info_found = True
+                                    elif dt_text == "Memory Capacity":
+                                        if dd_text.isdigit():
+                                            comp["memory_capacity"] = int(dd_text)
+                                        else:
+                                            comp["memory_capacity"] = dd_text
+                                        memory_info_found = True
+                                    elif dt_text == "Ramslots":
+                                        if dd_text.isdigit():
+                                            comp["ramslots"] = int(dd_text)
+                                        else:
+                                            comp["ramslots"] = dd_text
+                                        memory_info_found = True
+                        
+                        # Method 2: If not found, try looking for any dl elements on the page
+                        if not memory_info_found:
+                            all_dls = detail_soup.find_all("dl")
+                            
+                            for dl in all_dls:
+                                dt_elements = dl.find_all("dt")
+                                dd_elements = dl.find_all("dd")
+                                
+                                for dt, dd in zip(dt_elements, dd_elements):
+                                    dt_text = dt.text.strip()
+                                    dd_text = dd.text.strip()
+                                    
+                                    if dt_text == "Memory Type":
+                                        comp["memory_type"] = dd_text
+                                        memory_info_found = True
+                                    elif dt_text == "Memory Capacity":
+                                        if dd_text.isdigit():
+                                            comp["memory_capacity"] = int(dd_text)
+                                        else:
+                                            comp["memory_capacity"] = dd_text
+                                        memory_info_found = True
+                                    elif dt_text == "Ramslots":
+                                        if dd_text.isdigit():
+                                            comp["ramslots"] = int(dd_text)
+                                        else:
+                                            comp["ramslots"] = dd_text
+                                        memory_info_found = True
+                        
+                        if not memory_info_found:
+                            # Set default values
+                            comp["memory_type"] = None
+                            comp["memory_capacity"] = None
+                            comp["ramslots"] = None
+                        
+                    except Exception as e:
+                        print(f"Error extracting detailed motherboard info from {detail_url}: {e}")
+                        comp["memory_type"] = None
+                        comp["memory_capacity"] = None
+                        comp["ramslots"] = None
+                else:
+                    comp["memory_type"] = None
+                    comp["memory_capacity"] = None
+                    comp["ramslots"] = None
 
             if category_name == "cpu_cooler":
                 comp.update(extract_brand_from_cpu_cooler(title))
@@ -152,7 +249,7 @@ async def scrape_category(page, category_name):
             # print("\n")
             if comp["brand"] is not None:
                 comp["category"] = category_name
-                print(f"Adding component: {comp}")
+                # print(f"Adding component: {comp}")
                 all_components[category_name].append(comp)
 
         except Exception as e:

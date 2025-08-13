@@ -50,8 +50,7 @@ async def scrape_category(page, category_name):
 
             comp = {
                 "category": category_name,
-                # "brand": "",
-                # "model": title,
+                "model": title,
                 "price" : float(price.replace(" ", "")),
                 "status": "USED",
                 "img": img_src,
@@ -59,22 +58,24 @@ async def scrape_category(page, category_name):
                 "shop": "allegro_lokalnie"
             }
 
-            if category_name == "graphics_card":
-                comp.update(extract_info_from_gpu(title))
-            if category_name == "processor":
-                comp.update(extract_brand_from_cpu(title))
-            if category_name == "case":
-                comp.update(extract_brand_from_case(title))
-            if category_name == "storage":
-                comp.update(extract_brand_from_ssd(title))
-            if category_name == "ram":
-                comp.update(extract_brand_from_ram(title))
-            if category_name == "power_supply":
-                comp.update(extract_brand_from_power_supply(title))
-            if category_name == "motherboard":
-                comp.update(extract_brand_from_motherboard(title))
+            if title:
 
-            all_components[category_name].append(comp)
+                if category_name == "graphics_card":
+                    comp.update(extract_info_from_gpu(title))
+                if category_name == "processor":
+                    comp.update(extract_brand_from_cpu(title))
+                if category_name == "case":
+                    comp.update(extract_brand_from_case(title))
+                if category_name == "storage":
+                    comp.update(extract_brand_from_ssd(title))
+                if category_name == "ram":
+                    comp.update(extract_brand_from_ram(title))
+                if category_name == "power_supply":
+                    comp.update(extract_brand_from_power_supply(title))
+                if category_name == "motherboard":
+                    comp.update(extract_brand_from_motherboard(title))
+
+                all_components[category_name].append(comp)
 
 
         except Exception as e:

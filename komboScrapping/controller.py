@@ -3,7 +3,7 @@ import time
 from flask import Flask, jsonify
 import asyncio
 
-import itemComponentScrapper
+import scrapper
 app = Flask(__name__)
 
 CATEGORIES = [
@@ -20,7 +20,7 @@ def get_comp():
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        pc_kombo_components = loop.run_until_complete(itemComponentScrapper.main())
+        pc_kombo_components = loop.run_until_complete(scrapper.main())
         loop.close()
         for cat in CATEGORIES:
             all_components[cat].extend([item for item in pc_kombo_components if item['category'] == cat])

@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from validComponentsApi.extract_details import (
     extract_brand_from_gpu, extract_brand_from_cpu, extract_brand_from_case, extract_brand_from_ssd,
     extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard,
-extract_info_from_gpu
+    extract_info_from_gpu
 )
 
 GPU_BRANDS = {
@@ -54,7 +54,6 @@ async def scrape_category(page, category_name):
             link_tag = item.select_one("a.css-1tqlkj0")
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
 
-
             status_eng = None
             if status.lower() == "używane":
                 status_eng = "USED"
@@ -65,31 +64,32 @@ async def scrape_category(page, category_name):
 
             comp = {
                 "category": category_name,
-                # "brand": "",
-                # "model": title,
-                "price" : float (price),
+                "model": title,
+                "price": float(price),
                 "status": status_eng,
                 "img": img_src,
                 "url": url,
                 "shop": "olx"
             }
 
-            if category_name == "graphics_card":
-                comp.update(extract_info_from_gpu(title))
-            if category_name == "processor":
-                comp.update(extract_brand_from_cpu(title))
-            if category_name == "case":
-                comp.update(extract_brand_from_case(title))
-            if category_name == "storage":
-                comp.update(extract_brand_from_ssd(title))
-            if category_name == "ram":
-                comp.update(extract_brand_from_ram(title))
-            if category_name == "power_supply":
-                comp.update(extract_brand_from_power_supply(title))
-            if category_name == "motherboard":
-                comp.update(extract_brand_from_motherboard(title))
+            if title:
 
-            all_components[category_name].append(comp)
+                if category_name == "graphics_card":
+                    comp.update(extract_info_from_gpu(title))
+                if category_name == "processor":
+                    comp.update(extract_brand_from_cpu(title))
+                if category_name == "case":
+                    comp.update(extract_brand_from_case(title))
+                if category_name == "storage":
+                    comp.update(extract_brand_from_ssd(title))
+                if category_name == "ram":
+                    comp.update(extract_brand_from_ram(title))
+                if category_name == "power_supply":
+                    comp.update(extract_brand_from_power_supply(title))
+                if category_name == "motherboard":
+                    comp.update(extract_brand_from_motherboard(title))
+
+                all_components[category_name].append(comp)
 
         except Exception as e:
             print(f"Błąd w {category_name}: {e}")
