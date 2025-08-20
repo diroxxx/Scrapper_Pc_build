@@ -46,7 +46,7 @@ async def scrape_category(page, category_name):
         try:
             comp = {}
             title = item.find("h5").text
-            # print(title)
+            print("title: ", title)
             title = title.lower()
             if category_name == "processor":
                 tmp = extract_brand_from_cpu(title)
@@ -78,10 +78,10 @@ async def scrape_category(page, category_name):
             if category_name == "graphics_card":
                 # print(title)
                 comp["brand"] = extract_brand_from_gpu(title)
-                comp["model"] =  re.sub(r"\s*\([^)]*\)", "", item.select_one("span.series").text).strip()
+                comp["model"] = re.sub(r"\s*\([^)]*\)", "", item.select_one("span.series").text).strip()
                 comp["vram"] = item.select_one("span.vram").text
                 comp["gddr"] = None
-                
+
                 # Extract power draw from span without class
                 subtitle_div = item.select_one("div.subtitle")
                 power_draw = None
@@ -94,7 +94,7 @@ async def scrape_category(page, category_name):
                                 power_draw = int(power_match.group(1))
                             break
                 comp["power_draw"] = power_draw
-                
+
                 # print(f"Graphics Card: {comp}")
 
             if category_name == "case":
@@ -103,9 +103,8 @@ async def scrape_category(page, category_name):
                 # print(f"Case: {comp}")
 
             if category_name == "ssd":
-
                 comp.update(extract_brand_from_ssd(title))
-                
+
                 # Remove GB and convert to float
                 capacity_text = item.select_one("span.size").text
                 capacity_clean = re.sub(r'\s*gb\s*', '', capacity_text, flags=re.IGNORECASE).strip()
@@ -116,7 +115,7 @@ async def scrape_category(page, category_name):
                 comp.update(extract_brand_from_ram(title))
                 size_text = item.select_one("span.size").text
                 clean_capacity = re.sub(r"\s*gb\s*", "", size_text, flags=re.IGNORECASE)
-                comp["capacity"] = int (clean_capacity)
+                comp["capacity"] = int(clean_capacity)
                 tmp = item.select_one("span.type").text
                 # do poprawy
                 if "-" in tmp:
@@ -129,53 +128,58 @@ async def scrape_category(page, category_name):
 
             if category_name == "power_supply":
                 comp.update(extract_brand_from_power_supply(title))
-                comp["maxPowerWatt"] = int (item.select_one("span.watt").text.replace("W", ""))
-                # print(f"Power Supply: {comp}")
+                watt_element = item.select_one("span.watt")
+                if watt_element is not None:
+                    comp["maxPowerWatt"] = int(watt_element.text.replace("W", ""))
+                    # print(comp["maxPowerWatt"])
+                else:
+                    comp["maxPowerWatt"] = None
+
 
             if category_name == "motherboard":
 
                 # Limit to first 50 offers for testing
                 if i > 100:
                     break
-                
+
                 comp.update(extract_brand_from_motherboard(title))
                 comp["socket_motherboard"] = item.select_one("span.socket").text
                 comp["format"] = item.select_one("span.size").text
                 comp["chipset"] = item.select_one("span.chipset").text
-                
+
                 # Extract link to detailed page
                 link_element = item.find("a")
                 if link_element and link_element.get("href"):
                     detail_url = link_element["href"]
                     if not detail_url.startswith("http"):
                         detail_url = "https://www.pc-kombo.com" + detail_url
-                    
+
                     # Navigate to detailed page
                     try:
                         detail_page = await page.browser.get(detail_url)
                         await asyncio.sleep(1)  # Wait longer for page to load
-                        
+
                         detail_html = await detail_page.get_content()
                         detail_soup = BeautifulSoup(detail_html, "html.parser")
-                        
+
                         # Check for card-body elements
                         card_bodies = detail_soup.select("div.card-body")
-                        
+
                         # Try different selectors for the memory information
                         memory_info_found = False
-                        
+
                         # Method 1: Look for card-body with dl elements
                         for card_body in card_bodies:
                             dl_elements = card_body.find_all("dl")
-                            
+
                             for dl in dl_elements:
                                 dt_elements = dl.find_all("dt")
                                 dd_elements = dl.find_all("dd")
-                                
+
                                 for dt, dd in zip(dt_elements, dd_elements):
                                     dt_text = dt.text.strip()
                                     dd_text = dd.text.strip()
-                                    
+
                                     if dt_text == "Memory Type":
                                         comp["memory_type"] = dd_text
                                         memory_info_found = True
@@ -191,19 +195,19 @@ async def scrape_category(page, category_name):
                                         else:
                                             comp["ramslots"] = dd_text
                                         memory_info_found = True
-                        
+
                         # Method 2: If not found, try looking for any dl elements on the page
                         if not memory_info_found:
                             all_dls = detail_soup.find_all("dl")
-                            
+
                             for dl in all_dls:
                                 dt_elements = dl.find_all("dt")
                                 dd_elements = dl.find_all("dd")
-                                
+
                                 for dt, dd in zip(dt_elements, dd_elements):
                                     dt_text = dt.text.strip()
                                     dd_text = dd.text.strip()
-                                    
+
                                     if dt_text == "Memory Type":
                                         comp["memory_type"] = dd_text
                                         memory_info_found = True
@@ -219,13 +223,13 @@ async def scrape_category(page, category_name):
                                         else:
                                             comp["ramslots"] = dd_text
                                         memory_info_found = True
-                        
+
                         if not memory_info_found:
                             # Set default values
                             comp["memory_type"] = None
                             comp["memory_capacity"] = None
                             comp["ramslots"] = None
-                        
+
                     except Exception as e:
                         print(f"Error extracting detailed motherboard info from {detail_url}: {e}")
                         comp["memory_type"] = None
@@ -249,7 +253,9 @@ async def scrape_category(page, category_name):
             # print("\n")
             if comp["brand"] is not None:
                 comp["category"] = category_name
-                # print(f"Adding component: {comp}")
+                print(f"Adding component: {comp}")
+                print("\n")
+
                 all_components[category_name].append(comp)
 
         except Exception as e:

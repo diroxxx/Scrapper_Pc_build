@@ -4,11 +4,13 @@ from flask import Flask, jsonify
 import asyncio
 
 import scrapper
+
 app = Flask(__name__)
 
 CATEGORIES = [
     "processor", "graphics_card", "ram", "case", "storage", "power_supply", "motherboard", "cpu_cooler"
 ]
+
 
 @app.route('/installComponents', methods=['GET'])
 def get_comp():
@@ -25,7 +27,6 @@ def get_comp():
         for cat in CATEGORIES:
             all_components[cat].extend([item for item in pc_kombo_components if item['category'] == cat])
 
-
         end_time = time.perf_counter()
         execution_time = end_time - start_time
         # print(pc_kombo_components)
@@ -39,6 +40,7 @@ def get_comp():
     except Exception as e:
         print(f"Error in get_comp(): {e}")
         return jsonify({"error": f"Failed to scrape data: {str(e)}"}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)

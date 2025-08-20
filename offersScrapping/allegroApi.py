@@ -12,7 +12,7 @@ from validComponentsApi.extract_details import (
     extract_brand_from_ssd,
     extract_brand_from_cpu,
     extract_brand_from_gpu,
-extract_info_from_gpu
+    extract_info_from_gpu
 )
 
 CATEGORIES = {
@@ -56,27 +56,28 @@ async def scrape_category(page, category_name):
             # Pobieranie URL produktu z linka w h2
             website_url_raw = title_link["href"] if title_link else "Brak linku do strony"
             website_url = clean_allegro_url(website_url_raw)
-            print(f"{i}. Tytuł: {title}")
-            print(f"URL: {website_url}")
+            # print(f"{i}. Tytuł: {title}")
+            # print(f"URL: {website_url}")
 
             # Pobieranie ceny - używamy bardziej ogólnego selektora
             price = 0
             # Szukamy spana z ceną - może mieć różne klasy
-            price_element = item.find("span", class_=lambda x: x and "mli8_k4" in x and "msa3_z4" in x and "mqu1_1" in x)
+            price_element = item.find("span",
+                                      class_=lambda x: x and "mli8_k4" in x and "msa3_z4" in x and "mqu1_1" in x)
             if not price_element:
                 # Alternatywny sposób - szukanie przez aria-label
                 price_element = item.find("span", attrs={"aria-label": lambda x: x and "zł" in x if x else False})
-            
+
             if price_element:
                 price_text = price_element.get_text(strip=True)
-                print(f"Pełny tekst ceny: '{price_text}'")
+                # print(f"Pełny tekst ceny: '{price_text}'")
 
                 # Wyciągnij cenę (liczbę przed "zł")
                 price_match = re.search(r'(\d+[,.]?\d*)', price_text.replace('\xa0', ' '))
                 if price_match:
                     price = price_match.group(1).replace(",", ".")
                     price = float(price)
-                    print(f"Cena: {price}")
+                    # print(f"Cena: {price}")
             else:
                 print("Nie znaleziono elementu z ceną")
 
@@ -84,22 +85,22 @@ async def scrape_category(page, category_name):
             stan_span = item.find("span", string="Stan")
             status = stan_span.find_next_sibling("span") if stan_span else None
             status_text = status.text.strip() if status else "Brak statusu"
-            print("status: ", status_text)
+            # print("status: ", status_text)
 
             status_eng = None
-            if status_text.lower() == "Używany":
+            if status_text == "Używany":
                 status_eng = "USED"
-            elif status_text.lower() == "Nowy":
+            elif status_text == "Nowy":
                 status_eng = "NEW"
             else:
                 status_eng = "DEFECTIVE"
 
-            if title:
+            if title and price and status:
 
                 comp = {
                     "category": category_name,
                     "model": title,
-                    "price" : price,
+                    "price": price,
                     "status": status_eng,
                     "img": photo_url,
                     "url": website_url,
@@ -130,6 +131,7 @@ async def scrape_category(page, category_name):
     print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
     return all_components
 
+
 async def main():
     all_components = []
     browser = await uc.start(headless=False)
@@ -145,17 +147,18 @@ async def main():
     print(len(all_components))
     return all_components
 
+
 def clean_allegro_url(url):
     """Wyciąga czysty URL produktu z linku trackingowego Allegro"""
     if not url or url == "Brak linku do strony":
         return url
-    
+
     # Jeśli to link trackingowy (/events/clicks)
     if "/events/clicks" in url:
         try:
             parsed = urlparse(url)
             params = parse_qs(parsed.query)
-            
+
             # Szukamy parametru 'redirect' który zawiera prawdziwy URL
             if 'redirect' in params:
                 redirect_url = unquote(params['redirect'][0])
@@ -164,9 +167,10 @@ def clean_allegro_url(url):
                 return clean_url
         except:
             pass
-    
+
     # Jeśli to już czysty link lub nie udało się wyczyścić
     return url.split('?')[0]  # Usuń parametry query
+
 
 if __name__ == "__main__":
     uc.loop().run_until_complete(main())
