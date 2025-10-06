@@ -14,12 +14,12 @@ GPU_BRANDS = {
 
 CATEGORIES = {
     "processor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
-    "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
-    "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
-    "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
-    "storage": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
-    "power_supply": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-zasilacz/",
-    "motherboard": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-płyta-główna/"
+    # "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
+    # "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
+    # "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
+    # "storage": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
+    # "power_supply": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-zasilacz/",
+    # "motherboard": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-płyta-główna/"
 }
 
 
@@ -37,14 +37,14 @@ async def scrape_category(page, category_name):
 
     for item in cards:
         try:
-            title = item.find("h4", class_="css-1g61gc2").getText(strip=True)
+            title_tag = item.find("h4", class_="css-hzlye5")
+            title = title_tag.getText(strip=True) if title_tag else ""
 
             price_tag = item.select_one('[data-testid="ad-price"]')
-            # print(price_tag)
-            price_text = price_tag.getText(strip=True)
+            price_text = price_tag.getText(strip=True) if price_tag else ""
             price_match = re.search(r"(\d[\d\s]*)\s*zł", price_text)
             price = price_match.group(1).replace(" ", "") if price_match else 0
-            # print(price)
+
             status_span = item.find("span", attrs={"title": "Używane"})
             status = status_span.getText(strip=True) if status_span else "Nieznany"
 
@@ -53,7 +53,6 @@ async def scrape_category(page, category_name):
 
             link_tag = item.select_one("a.css-1tqlkj0")
             url = "https://www.olx.pl" + str(link_tag.get("href", "")) if link_tag else ""
-
             status_eng = None
             if status.lower() == "używane":
                 status_eng = "USED"

@@ -3,9 +3,14 @@ import time
 from flask import Flask, jsonify
 import asyncio
 
+import pika
+import json
+
 import olxApi
 import allegroApi
 import allegroLokalneApi
+
+import pikaConfiguration
 
 # import xkomApi  # Commented out as it's incomplete
 
@@ -27,28 +32,36 @@ def get_comp():
         asyncio.set_event_loop(loop)
         print("Starting to scrape OLX...")
         data_olx = loop.run_until_complete(olxApi.main())
-        print("Starting to scrape Allegro lokalne...")
-        data_allegro_lokalnie = loop.run_until_complete(allegroLokalneApi.main())
-        print("Starting to scrape Allegro...")
-        data_allegro = loop.run_until_complete(allegroApi.main())
+        pikaConfiguration.send_to_rabbitmq("olx", data_olx)
+
+        # print("Starting to scrape Allegro lokalne...")
+        # data_allegro_lokalnie = loop.run_until_complete(allegroLokalneApi.main())
+        # pikaConfiguration.send_to_rabbitmq("allegroLokalnie", data_allegro_lokalnie)
+        #
+        # print("Starting to scrape Allegro...")
+        # data_allegro = loop.run_until_complete(allegroApi.main())
+        # pikaConfiguration.send_to_rabbitmq("allegro", data_allegro)
+
         loop.close()
 
         end_time = time.perf_counter()
         execution_time = end_time - start_time
 
         print(f"OLX returned {len(data_olx)} total items")
-        print(f"allegroLok returned {len(data_allegro_lokalnie)} total items")
-        print(f"allegro returned {len(data_allegro)} total items")
+        # print(f"allegroLok returned {len(data_allegro_lokalnie)} total items")
+        # print(f"allegro returned {len(data_allegro)} total items")
         print(f"Total execution time: {execution_time:.2f} seconds")
         print(f"Total execution time: {execution_time / 60:.2f} minutes")
 
 
-        # Merge into all_components
+
+        # # Merge into all_components
         for cat in CATEGORIES:
             all_components[cat].extend([item for item in data_olx if item['category'] == cat])
-            all_components[cat].extend([item for item in data_allegro_lokalnie if item['category'] == cat])
-            all_components[cat].extend([item for item in data_allegro if item['category'] == cat])
-
+            # all_components[cat].extend([item for item in data_allegro_lokalnie if item['category'] == cat])
+            # all_components[cat].extend([item for item in data_allegro if item['category'] == cat])
+        #
+        # return jsonify(all_components)
         return jsonify(all_components)
 
     except Exception as e:
