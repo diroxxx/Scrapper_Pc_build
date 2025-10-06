@@ -1,11 +1,6 @@
 import time
-
 from flask import Flask, jsonify
 import asyncio
-
-import pika
-import json
-
 import olxApi
 import allegroApi
 import allegroLokalneApi
@@ -32,15 +27,15 @@ def get_comp():
         asyncio.set_event_loop(loop)
         print("Starting to scrape OLX...")
         data_olx = loop.run_until_complete(olxApi.main())
-        pikaConfiguration.send_to_rabbitmq("olx", data_olx)
+        pikaConfiguration.send_to_rabbitmq("offers", data_olx)
 
-        # print("Starting to scrape Allegro lokalne...")
-        # data_allegro_lokalnie = loop.run_until_complete(allegroLokalneApi.main())
-        # pikaConfiguration.send_to_rabbitmq("allegroLokalnie", data_allegro_lokalnie)
-        #
-        # print("Starting to scrape Allegro...")
-        # data_allegro = loop.run_until_complete(allegroApi.main())
-        # pikaConfiguration.send_to_rabbitmq("allegro", data_allegro)
+        print("Starting to scrape Allegro lokalne...")
+        data_allegro_lokalnie = loop.run_until_complete(allegroLokalneApi.main())
+        pikaConfiguration.send_to_rabbitmq("offers", data_allegro_lokalnie)
+
+        print("Starting to scrape Allegro...")
+        data_allegro = loop.run_until_complete(allegroApi.main())
+        pikaConfiguration.send_to_rabbitmq("offers", data_allegro)
 
         loop.close()
 
@@ -48,8 +43,8 @@ def get_comp():
         execution_time = end_time - start_time
 
         print(f"OLX returned {len(data_olx)} total items")
-        # print(f"allegroLok returned {len(data_allegro_lokalnie)} total items")
-        # print(f"allegro returned {len(data_allegro)} total items")
+        print(f"allegroLok returned {len(data_allegro_lokalnie)} total items")
+        print(f"allegro returned {len(data_allegro)} total items")
         print(f"Total execution time: {execution_time:.2f} seconds")
         print(f"Total execution time: {execution_time / 60:.2f} minutes")
 
@@ -58,8 +53,8 @@ def get_comp():
         # # Merge into all_components
         for cat in CATEGORIES:
             all_components[cat].extend([item for item in data_olx if item['category'] == cat])
-            # all_components[cat].extend([item for item in data_allegro_lokalnie if item['category'] == cat])
-            # all_components[cat].extend([item for item in data_allegro if item['category'] == cat])
+            all_components[cat].extend([item for item in data_allegro_lokalnie if item['category'] == cat])
+            all_components[cat].extend([item for item in data_allegro if item['category'] == cat])
         #
         # return jsonify(all_components)
         return jsonify(all_components)
@@ -67,27 +62,6 @@ def get_comp():
     except Exception as e:
         print(f"Error in get_comp(): {e}")
         return jsonify({"error": f"Failed to scrape data: {str(e)}"}), 500
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({"status": "healthy", "message": "PC Build Scraper API is running"})
-
-import logging
-@app.route('/', methods=['GET'])
-def home():
-    """API documentation endpoint"""
-
-    logging.warning("Request received!")
-    return jsonify({
-        "message": "PC Build Scraper API",
-        "endpoints": {
-            "/components": "Get all components organized by type",
-            "/health": "Health check"
-        },
-        "supported_categories": CATEGORIES
-    })
-
 
 if __name__ == '__main__':
     app.run(debug=True)

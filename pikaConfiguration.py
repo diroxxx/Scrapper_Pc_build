@@ -1,7 +1,6 @@
 import pika
 import json
 
-# Konfiguracja połączenia z RabbitMQ
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 channel = connection.channel()
 # channel.queue_declare(queue='olx')  # Tworzy kolejkę jeśli nie istnieje

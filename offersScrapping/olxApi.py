@@ -14,19 +14,19 @@ GPU_BRANDS = {
 
 CATEGORIES = {
     "processor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
-    # "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
-    # "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
-    # "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
-    # "storage": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
-    # "power_supply": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-zasilacz/",
-    # "motherboard": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-płyta-główna/"
+    "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
+    "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
+    "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
+    "storage": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
+    "power_supply": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-zasilacz/",
+    "motherboard": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-płyta-główna/"
 }
 
 
 async def scrape_category(page, category_name):
     all_components = {cat: [] for cat in CATEGORIES}
 
-    for _ in range(20):  # scroll down kilka razy
+    for _ in range(20):
         await page.evaluate("window.scrollBy(0, window.innerHeight);")
         await asyncio.sleep(1)
     await asyncio.sleep(3)
