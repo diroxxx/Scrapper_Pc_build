@@ -1,20 +1,20 @@
 import asyncio
-import nodriver as uc
 import re
+from typing import Any, Dict
+
+import nodriver as uc
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, unquote
 from validComponentsApi.extract_details import (
     extract_brand_from_case,
     extract_brand_from_power_supply,
     extract_brand_from_motherboard,
-    extract_brand_from_cpu_cooler,
     extract_brand_from_ram,
     extract_brand_from_ssd,
     extract_brand_from_cpu,
-    extract_brand_from_gpu,
-    extract_info_from_gpu
+    extract_info_from_gpu,
 )
-
+import re
 CATEGORIES = {
     "processor": "https://allegro.pl/kategoria/podzespoly-komputerowe-procesory-257222",
     "graphics_card": "https://allegro.pl/kategoria/podzespoly-komputerowe-karty-graficzne-260019",
@@ -23,14 +23,51 @@ CATEGORIES = {
     "storage": "https://allegro.pl/kategoria/dyski-i-pamieci-przenosne-dyski-ssd-257335",
     "power_supply": "https://allegro.pl/kategoria/podzespoly-komputerowe-zasilacze-259437",
     "motherboard": "https://allegro.pl/kategoria/podzespoly-komputerowe-plyty-glowne-4228"
-
 }
 
 
-async def scrape_category(page, category_name):
-    all_components = {cat: [] for cat in CATEGORIES}
+def _parse_price(text: str) -> float:
+    """Extract numeric price from text like '1 299,99 zł' or '1299 zł'."""
+    if not text:
+        return 0.0
+    text = text.replace("\xa0", " ")
+    match = re.search(r"(\d+[\s\d]*[,.]?\d*)", text)
+    if not match:
+        return 0.0
+    num = match.group(1).replace(" ", "").replace(",", ".")
+    try:
+        return float(num)
+    except ValueError:
+        return 0.0
 
-    for i in range(23):
+
+def _extract_status(item_soup: BeautifulSoup, page_soup: BeautifulSoup) -> str | None:
+    """Try to extract condition (Stan) from the card first, then fall back to page-level soup."""
+    status_eng: str | None = None
+
+    # Try within the item card (if Allegro exposes it there)
+    stan_dt = item_soup.find("dt", string="Stan")
+    if not stan_dt:
+        # Fallback: search on whole page (kept for backward compatibility)
+        stan_dt = page_soup.find("dt", string="Stan")
+
+    if stan_dt:
+        stan_value = stan_dt.find_next_sibling("dd")
+        stan_value_text = stan_value.get_text(strip=True).lower() if stan_value else ""
+        if stan_value_text == "używany":
+            status_eng = "USED"
+        elif stan_value_text == "nowy":
+            status_eng = "NEW"
+        else:
+            status_eng = "DEFECTIVE"
+
+    return status_eng
+
+
+async def scrape_category(page, category_name):
+    all_components: Dict[str, list[Dict[str, Any]]] = {cat: [] for cat in CATEGORIES}
+
+    for _ in range(30):
         await page.evaluate("window.scrollBy(0, window.innerHeight);")
         await asyncio.sleep(1)
     await asyncio.sleep(5)
@@ -38,92 +75,74 @@ async def scrape_category(page, category_name):
     html = await page.get_content()
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("article")
-    # print(soup)
-    # print(f"Znaleziono {len(cards)} ofert:\n")
+
+    # Map category to enrichment function
+    enrichers = {
+        "graphics_card": extract_info_from_gpu,
+        "processor": extract_brand_from_cpu,
+        "case": extract_brand_from_case,
+        "storage": extract_brand_from_ssd,
+        "ram": extract_brand_from_ram,
+        "power_supply": extract_brand_from_power_supply,
+        "motherboard": extract_brand_from_motherboard,
+    }
 
     for i, item in enumerate(cards, start=1):
         try:
-            # Pobieranie zdjęcia
+            # Image
             photo_link = item.find("a")
             photo_img = photo_link.find("img") if photo_link else None
-            photo_url = photo_img["src"] if photo_img else "Brak zdjęcia"
+            photo_url = photo_img.get("src", "") if photo_img else "Brak zdjęcia"
 
-            # Pobieranie tytułu z linka w h2
+            # Title and URL
             title_element = item.find("h2")
             title_link = title_element.find("a") if title_element else None
-            title = title_link.text.strip() if title_link else "Brak tytułu"
-
-            # Pobieranie URL produktu z linka w h2
-            website_url_raw = title_link["href"] if title_link else "Brak linku do strony"
+            title = title_link.get_text(strip=True) if title_link else ""
+            website_url_raw = title_link.get("href", "") if title_link else "Brak linku do strony"
             website_url = clean_allegro_url(website_url_raw)
-            # print(f"{i}. Tytuł: {title}")
-            # print(f"URL: {website_url}")
 
-            # Pobieranie ceny - używamy bardziej ogólnego selektora
-            price = 0
-            # Szukamy spana z ceną - może mieć różne klasy
-            price_element = item.find("span",
-                                      class_=lambda x: x and "mli8_k4" in x and "msa3_z4" in x and "mqu1_1" in x)
+            # Price
+            price: float = 0.0
+            price_element = item.find(
+                "span",
+                class_=lambda x: x and "mli8_k4" in x and "msa3_z4" in x and "mqu1_1" in x,
+            )
             if not price_element:
-                # Alternatywny sposób - szukanie przez aria-label
-                price_element = item.find("span", attrs={"aria-label": lambda x: x and "zł" in x if x else False})
-
+                price_element = item.find("span", attrs={"aria-label": lambda x: bool(x and "zł" in x)})
             if price_element:
-                price_text = price_element.get_text(strip=True)
-                # print(f"Pełny tekst ceny: '{price_text}'")
+                price = _parse_price(price_element.get_text(strip=True))
 
-                # Wyciągnij cenę (liczbę przed "zł")
-                price_match = re.search(r'(\d+[,.]?\d*)', price_text.replace('\xa0', ' '))
-                if price_match:
-                    price = price_match.group(1).replace(",", ".")
-                    price = float(price)
-                    # print(f"Cena: {price}")
-            else:
-                print("Nie znaleziono elementu z ceną")
+            # Status
+            status_eng = _extract_status(item, soup)
 
-            # Pobieranie statusu produktu
-            stan_span = item.find("span", string="Stan")
-            status = stan_span.find_next_sibling("span") if stan_span else None
-            status_text = status.text.strip() if status else "Brak statusu"
-            # print("status: ", status_text)
+            if not title:
+                continue
 
-            status_eng = None
-            if status_text == "Używany":
-                status_eng = "USED"
-            elif status_text == "Nowy":
-                status_eng = "NEW"
-            else:
-                status_eng = "DEFECTIVE"
+            if is_bundle_offer(title):
+                print(f"Pominięto zestaw: {title}")
+                continue
 
-            if title and price and status:
+            comp: Dict[str, Any] = {
+                "category": category_name,
+                "model": clean_title(title, category_name),
+                "price": price,
+                "status": status_eng,
+                "img": photo_url,
+                "url": website_url,
+                "shop": "allegro",
+            }
+            print(comp)
 
-                comp = {
-                    "category": category_name,
-                    "model": title,
-                    "price": price,
-                    "status": status_eng,
-                    "img": photo_url,
-                    "url": website_url,
-                    "shop": "allegro"
-                }
-                if title:
+            # Enrich with brand/info if possible
+            enricher = enrichers.get(category_name)
+            if enricher:
+                try:
+                    comp.update(enricher(title))
+                except Exception:
+                    # Don't fail the whole card on enrichment errors
+                    pass
 
-                    if category_name == "graphics_card":
-                        comp.update(extract_info_from_gpu(title))
-                    if category_name == "processor":
-                        comp.update(extract_brand_from_cpu(title))
-                    if category_name == "case":
-                        comp.update(extract_brand_from_case(title))
-                    if category_name == "storage":
-                        comp.update(extract_brand_from_ssd(title))
-                    if category_name == "ram":
-                        comp.update(extract_brand_from_ram(title))
-                    if category_name == "power_supply":
-                        comp.update(extract_brand_from_power_supply(title))
-                    if category_name == "motherboard":
-                        comp.update(extract_brand_from_motherboard(title))
-
-                    all_components[category_name].append(comp)
+            all_components[category_name].append(comp)
 
         except Exception as e:
             print(f"{i}. Błąd: {e}")
@@ -133,7 +152,7 @@ async def scrape_category(page, category_name):
 
 
 async def main():
-    all_components = []
+    all_components: list[Dict[str, Any]] = []
     browser = await uc.start(headless=False)
 
     for category_name, url in CATEGORIES.items():
@@ -149,27 +168,156 @@ async def main():
 
 
 def clean_allegro_url(url):
-    """Wyciąga czysty URL produktu z linku trackingowego Allegro"""
     if not url or url == "Brak linku do strony":
         return url
 
-    # Jeśli to link trackingowy (/events/clicks)
     if "/events/clicks" in url:
         try:
             parsed = urlparse(url)
             params = parse_qs(parsed.query)
 
-            # Szukamy parametru 'redirect' który zawiera prawdziwy URL
             if 'redirect' in params:
                 redirect_url = unquote(params['redirect'][0])
-                # Usuwamy dodatkowe parametry bi_s, bi_m, etc.
                 clean_url = redirect_url.split('?')[0]
                 return clean_url
-        except:
+        except Exception:
             pass
 
-    # Jeśli to już czysty link lub nie udało się wyczyścić
-    return url.split('?')[0]  # Usuń parametry query
+    return url.split('?')[0]
+
+
+def clean_title(title: str, category: str) -> str:
+    if not title:
+        return title
+
+    keywords_to_remove = {
+        "processor": [
+            r"\bprocesor\b",
+            r"\bCPU\b",
+            r"\bBox\b",
+            r"\bOEM\b",
+            r"\bTray\b",
+        ],
+        "graphics_card": [
+            r"\bkarta graficzna\b",
+            r"\bgraphics card\b",
+            r"\bGPU\b",
+            r"\bVGA\b",
+        ],
+        "ram": [
+            r"\bpamięć\b",
+            r"\bpamiec\b",
+            r"\bRAM\b",
+            r"\bmemory\b",
+        ],
+        "case": [
+            r"\bobudowa\b",
+            r"\bcase\b",
+            r"\bshell\b",
+        ],
+        "storage": [
+            r"\bdysk\b",
+            r"\bSSD\b",
+            r"\bHDD\b",
+            r"\bNVMe\b",
+            r"\bSATA\b",
+        ],
+        "power_supply": [
+            r"\bzasilacz\b",
+            r"\bPSU\b",
+            r"\bpower supply\b",
+        ],
+        "motherboard": [
+            r"\bpłyta główna\b",
+            r"\bplyta glowna\b",
+            r"\bmotherboard\b",
+            r"\bmobo\b",
+        ],
+    }
+
+    general_keywords = [
+        r"\bnowy\b",
+        r"\bnowa\b",
+        r"\bnowe\b",
+        r"\bużywany\b",
+        r"\buzywany\b",
+        r"\bużywana\b",
+        r"\bfv\b",
+        r"\bgwarancja\b",
+        r"\bpolecam\b",
+        r"\btanio\b",
+        r"\bokazja\b",
+        r"\bsprzedam\b",
+    ]
+
+    cleaned = title
+
+    if category in keywords_to_remove:
+        for keyword in keywords_to_remove[category]:
+            cleaned = re.sub(keyword, "", cleaned, flags=re.IGNORECASE)
+
+    for keyword in general_keywords:
+        cleaned = re.sub(keyword, "", cleaned, flags=re.IGNORECASE)
+
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    cleaned = re.sub(r'\s*[-,/|]\s*', ' ', cleaned)
+    cleaned = cleaned.strip(' -,/|')
+
+    return cleaned
+
+
+def is_bundle_offer(title: str) -> bool:
+    if not title:
+        return False
+
+    bundle_keywords = [
+        r'\bzestaw\b',
+        r'\bset\b',
+        r'\bkomplet\b',
+        r'\bbundle\b',
+        r'\bpc\s+gaming\b',
+        r'\bkomputer\b',
+        r'\bzestaw do gier\b',
+        r'\bzestaw komputerowy\b',
+    ]
+
+    for keyword in bundle_keywords:
+        if re.search(keyword, title, flags=re.IGNORECASE):
+            return True
+
+    component_keywords = [
+        r'\bprocesor\b',
+        r'\bcpu\b',
+        r'\bkarta graficzna\b',
+        r'\bgpu\b',
+        r'\bgtx\b',
+        r'\brtx\b',
+        r'\bram\b',
+        r'\bddr\d\b',
+        r'\bpłyta\s+główna\b',
+        r'\bplyta\s+glowna\b',
+        r'\bmotherboard\b',
+        r'\bmobo\b',
+        r'\bzasilacz\b',
+        r'\bpsu\b',
+        r'\bobudowa\b',
+        r'\bcase\b',
+        r'\bdysk\b',
+        r'\bssd\b',
+        r'\bhdd\b',
+    ]
+
+    component_count = sum(1 for keyword in component_keywords
+                          if re.search(keyword, title, flags=re.IGNORECASE))
+
+    if component_count >= 3:
+        return True
+
+    plus_pattern = r'\b(procesor|cpu|gpu|ram|płyta|plyta|dysk|zasilacz|obudowa)\s*\+\s*(procesor|cpu|gpu|ram|płyta|plyta|dysk|zasilacz|obudowa)\b'
+    if re.search(plus_pattern, title, flags=re.IGNORECASE):
+        return True
+
+    return False
 
 
 if __name__ == "__main__":
