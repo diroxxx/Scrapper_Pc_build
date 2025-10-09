@@ -109,6 +109,7 @@ POWER_SUPPLY_BRANDS = {
 RAM_BRANDS = {
     "corsair",
     "g.skill",
+    "gskill",
     "kingston",
     "crucial",
     "adata",
@@ -122,7 +123,8 @@ RAM_BRANDS = {
     "mushkin",
     "pny",
     "apacer",
-    "silicon power"
+    "silicon power",
+    "lexar"
 }
 SSD_BRANDS = {
     "samsung",

@@ -22,15 +22,11 @@ CATEGORIES = {
 async def scrape_category(page, category_name):
     all_components = {cat: [] for cat in CATEGORIES}
 
-    # for i in range(17):
-    #     await page.evaluate("window.scrollBy(0, window.innerHeight);")
-    #     await asyncio.sleep(1)
     await asyncio.sleep(5)
 
     html = await page.get_content()
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("a.mlc-card.mlc-itembox")
-    # print(f"Znaleziono {len(cards)} ofert:\n")
 
     for i, item in enumerate(cards, start=1):
         price = 0
@@ -39,45 +35,47 @@ async def scrape_category(page, category_name):
             title = title_el.get_text(strip=True) if title_el else "Brak tytułu"
 
             price_el = item.select_one(".ml-offer-price__dollars")
-            price = price_el.get_text(strip=True) if price_el else 0
-            # print(price)/
+            price_text = price_el.get_text(strip=True) if price_el else "0"
+            price = safe_parse_price(price_text)
+
             href = item.get("href", "")
             url = f"https://allegrolokalnie.pl{href}" if href else "Brak linku"
 
             img = item.select_one(".mlc-itembox__image__wrapper img")
             img_src = img.get("src", "Brak src")
 
-            comp = {
-                "category": category_name,
-                "model": title,
-                "price" : float(price.replace(" ", "")),
-                "status": "USED",
-                "img": img_src,
-                "url": url,
-                "shop": "allegro_lokalnie"
-            }
-
             if title:
-                if is_bundle_offer(title):
+                if is_bundle_offer(title,category_name):
                     print(f"Pominięto zestaw: {title}")
                     continue
-
                 title = clean_title(title, category_name)
 
+                extracted_data = {}
                 if category_name == "graphics_card":
-                    comp.update(extract_info_from_gpu(title))
-                if category_name == "processor":
-                    comp.update(extract_brand_from_cpu(title))
-                if category_name == "case":
-                    comp.update(extract_brand_from_case(title))
-                if category_name == "storage":
-                    comp.update(extract_brand_from_ssd(title))
-                if category_name == "ram":
-                    comp.update(extract_brand_from_ram(title))
-                if category_name == "power_supply":
-                    comp.update(extract_brand_from_power_supply(title))
-                if category_name == "motherboard":
-                    comp.update(extract_brand_from_motherboard(title))
+                    extracted_data = extract_info_from_gpu(title)
+                elif category_name == "processor":
+                    extracted_data = extract_brand_from_cpu(title)
+                elif category_name == "case":
+                    extracted_data = extract_brand_from_case(title)
+                elif category_name == "storage":
+                    extracted_data = extract_brand_from_ssd(title)
+                elif category_name == "ram":
+                    extracted_data = extract_brand_from_ram(title)
+                elif category_name == "power_supply":
+                    extracted_data = extract_brand_from_power_supply(title)
+                elif category_name == "motherboard":
+                    extracted_data = extract_brand_from_motherboard(title)
+
+                comp = {
+                    "category": category_name,
+                    "brand": extracted_data.get("brand"),
+                    "model": extracted_data.get("model", title),
+                    "price": float(price),
+                    "status": 'USED',
+                    "img": img_src,
+                    "url": url,
+                    "shop": "allegro_lokalnie"
+                }
 
                 all_components[category_name].append(comp)
 
@@ -89,6 +87,30 @@ async def scrape_category(page, category_name):
     return all_components
 
 
+def safe_parse_price(price_text: str) -> float:
+    """Safely parse price text to float, handling spaces and various formats."""
+    if not price_text or price_text == 0:
+        return 0.0
+
+    # Convert to string if not already
+    price_str = str(price_text)
+
+    # Remove all spaces and non-breaking spaces
+    price_str = price_str.replace(" ", "").replace("\xa0", "")
+
+    # Remove currency symbols
+    price_str = price_str.replace("zł", "").replace("PLN", "")
+
+    # Replace comma with dot for decimal separator
+    price_str = price_str.replace(",", ".")
+
+    # Remove any remaining non-numeric characters except dot
+    price_str = re.sub(r"[^\d.]", "", price_str)
+
+    try:
+        return float(price_str) if price_str else 0.0
+    except ValueError:
+        return 0.0
 def clean_title(title: str, category: str) -> str:
     if not title:
         return title
@@ -169,7 +191,7 @@ def clean_title(title: str, category: str) -> str:
     return cleaned
 
 
-def is_bundle_offer(title: str) -> bool:
+def is_bundle_offer(title: str,category: str = None) -> bool:
     if not title:
         return False
 
@@ -195,10 +217,6 @@ def is_bundle_offer(title: str) -> bool:
         r'\bgpu\b',
         r'\bgtx\b',
         r'\brtx\b',
-        r'\bpamięć\b',
-        r'\bpamiec\b',
-        r'\bram\b',
-        r'\bddr\d\b',
         r'\bpłyta\s+główna\b',
         r'\bplyta\s+glowna\b',
         r'\bmotherboard\b',
@@ -211,6 +229,13 @@ def is_bundle_offer(title: str) -> bool:
         r'\bssd\b',
         r'\bhdd\b',
     ]
+    if category != "ram":
+        component_keywords.extend([
+            r'\bpamięć\b',
+            r'\bpamiec\b',
+            r'\bram\b',
+            r'\bddr\d\b',
+        ])
 
     component_count = sum(1 for keyword in component_keywords
                           if re.search(keyword, title, flags=re.IGNORECASE))

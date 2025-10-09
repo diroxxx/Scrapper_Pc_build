@@ -115,34 +115,40 @@ async def scrape_category(page, category_name):
             # Status
             status_eng = _extract_status(item, soup)
 
-            if not title:
-                continue
+            if title:
+                if is_bundle_offer(title, category_name):
+                    print(f"Pominięto zestaw: {title}")
+                    continue
+                title = clean_title(title, category_name)
 
-            if is_bundle_offer(title):
-                print(f"Pominięto zestaw: {title}")
-                continue
 
-            comp: Dict[str, Any] = {
-                "category": category_name,
-                "model": clean_title(title, category_name),
-                "price": price,
-                "status": status_eng,
-                "img": photo_url,
-                "url": website_url,
-                "shop": "allegro",
-            }
-            print(comp)
+                extracted_data = {}
+                if category_name == "graphics_card":
+                    extracted_data = extract_info_from_gpu(title)
+                elif category_name == "processor":
+                    extracted_data = extract_brand_from_cpu(title)
+                elif category_name == "case":
+                    extracted_data = extract_brand_from_case(title)
+                elif category_name == "storage":
+                    extracted_data = extract_brand_from_ssd(title)
+                elif category_name == "ram":
+                    extracted_data = extract_brand_from_ram(title)
+                elif category_name == "power_supply":
+                    extracted_data = extract_brand_from_power_supply(title)
+                elif category_name == "motherboard":
+                    extracted_data = extract_brand_from_motherboard(title)
 
-            # Enrich with brand/info if possible
-            enricher = enrichers.get(category_name)
-            if enricher:
-                try:
-                    comp.update(enricher(title))
-                except Exception:
-                    # Don't fail the whole card on enrichment errors
-                    pass
-
-            all_components[category_name].append(comp)
+                comp = {
+                    "category": category_name,
+                    "brand": extracted_data.get("brand"),
+                    "model": extracted_data.get("model", title),
+                    "price": float(price),
+                    "status": status_eng,
+                    "img": photo_url,
+                    "url": str(website_url),
+                    "shop": "allegro"
+                }
+                all_components[category_name].append(comp)
 
         except Exception as e:
             print(f"{i}. Błąd: {e}")
@@ -266,7 +272,7 @@ def clean_title(title: str, category: str) -> str:
     return cleaned
 
 
-def is_bundle_offer(title: str) -> bool:
+def is_bundle_offer(title: str,category: str = None) -> bool:
     if not title:
         return False
 
@@ -292,8 +298,6 @@ def is_bundle_offer(title: str) -> bool:
         r'\bgpu\b',
         r'\bgtx\b',
         r'\brtx\b',
-        r'\bram\b',
-        r'\bddr\d\b',
         r'\bpłyta\s+główna\b',
         r'\bplyta\s+glowna\b',
         r'\bmotherboard\b',
@@ -306,6 +310,13 @@ def is_bundle_offer(title: str) -> bool:
         r'\bssd\b',
         r'\bhdd\b',
     ]
+    if category != "ram":
+        component_keywords.extend([
+            r'\bpamięć\b',
+            r'\bpamiec\b',
+            r'\bram\b',
+            r'\bddr\d\b',
+        ])
 
     component_count = sum(1 for keyword in component_keywords
                           if re.search(keyword, title, flags=re.IGNORECASE))
