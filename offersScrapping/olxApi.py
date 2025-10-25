@@ -8,20 +8,15 @@ from validComponentsApi.extract_details import (
     extract_info_from_gpu
 )
 
-GPU_BRANDS = {
-    "asus", "msi", "gigabyte", "zotac", "evga", "palit", "gainward", "xfx", "powercolor", "sapphire", "inno3d", "nvidia"
-}
-
 CATEGORIES = {
     "processor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
-    "graphics card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
+    "graphics_card": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-karta-graficzna/",
     "ram": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ram/",
     "case": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-obudowa/",
     "storage": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-ssd/",
     "power_supply": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-zasilacz/",
     "motherboard": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/q-płyta-główna/"
 }
-
 
 async def scrape_category(page, category_name):
     all_components = {cat: [] for cat in CATEGORIES}
@@ -45,8 +40,6 @@ async def scrape_category(page, category_name):
             price_match = re.search(r"(\d[\d\s]*)\s*zł", price_text)
             price = price_match.group(1).replace(" ", "") if price_match else 0
 
-
-
             img_tag = item.select_one("img")
             img_src = str(img_tag.get("src", "")) if img_tag else ""
 
@@ -56,7 +49,7 @@ async def scrape_category(page, category_name):
 
             status_span = item.find("span", attrs={"title": "Używane"})
             status = status_span.getText(strip=True) if status_span else "Nieznany"
-            print(status)
+            # print(status)
             status_eng = None
             if status.lower() == "używane":
                 status_eng = "USED"
@@ -67,7 +60,7 @@ async def scrape_category(page, category_name):
 
             if title:
                 if is_bundle_offer(title, category_name):
-                    print(f"Pominięto zestaw: {title}")
+                    # print(f"Pominięto zestaw: {title}")
                     continue
                 title = clean_title(title, category_name)
 
@@ -97,16 +90,13 @@ async def scrape_category(page, category_name):
                     "url": url,
                     "shop": "olx"
                 }
-
                 if comp["brand"] is not None and comp["model"] is not None:
-                    # print(f"Adding component: {comp}")
-                    # print("\n")
                     all_components[category_name].append(comp)
 
         except Exception as e:
             print(f"Błąd w {category_name}: {e}")
 
-    print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
+    # print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
     return all_components
 
 
@@ -254,12 +244,12 @@ async def main():
     browser = await uc.start(headless=True)
 
     for category_name, url in CATEGORIES.items():
-        print(f"Pobieram kategorię: {category_name}")
+        # print(f"Pobieram kategorię: {category_name}")
         page = await browser.get(url)
         items = await scrape_category(page, category_name)
         all_components.extend(items[category_name])
 
-    print(len(all_components))
+    # print(len(all_components))
     return all_components
 
 

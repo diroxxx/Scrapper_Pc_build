@@ -8,7 +8,13 @@ import scrapper
 app = Flask(__name__)
 
 CATEGORIES = [
-    "processor", "graphics_card", "ram", "case", "storage", "power_supply", "motherboard", "cpu_cooler"
+    "processor",
+    "graphics_card",
+    "ram", "case",
+    "storage",
+    "power_supply",
+    "motherboard",
+    "cpu_cooler"
 ]
 
 

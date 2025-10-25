@@ -46,7 +46,7 @@ async def scrape_category(page, category_name):
 
             if title:
                 if is_bundle_offer(title,category_name):
-                    print(f"Pominięto zestaw: {title}")
+                    # print(f"Pominięto zestaw: {title}")
                     continue
                 title = clean_title(title, category_name)
 
@@ -77,13 +77,14 @@ async def scrape_category(page, category_name):
                     "shop": "allegro_lokalnie"
                 }
 
-                all_components[category_name].append(comp)
+                if comp["brand"] is not None and comp["model"] is not None:
+                    all_components[category_name].append(comp)
 
 
         except Exception as e:
             print(f"{i}.Błąd: {e}")
 
-    print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
+    # print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
     return all_components
 
 
@@ -254,12 +255,12 @@ async def main():
     browser = await uc.start(headless=True)
 
     for category_name, url in CATEGORIES.items():
-        print(f"Pobieram kategorię: {category_name}")
+        # print(f"Pobieram kategorię: {category_name}")
         page = await browser.get(url)
         items = await scrape_category(page, category_name)
         all_components.extend(items[category_name])
 
-    print(f"Łącznie znaleziono {len(all_components)} ofert.")
+    # print(f"Łącznie znaleziono {len(all_components)} ofert.")
     return all_components
 
 

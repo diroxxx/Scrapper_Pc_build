@@ -5,9 +5,9 @@ from typing import List, Dict, Any, Optional
 import pikaConfiguration
 from datetime import datetime
 
-import allegroApi
-import olxApi
-import allegroLokalneApi
+from offersScrapping import allegroApi
+from offersScrapping import olxApi
+from offersScrapping import allegroLokalneApi
 
 app = Flask(__name__)
 
@@ -17,26 +17,14 @@ CATEGORIES = [
 
 
 class ShopData:
-    def __init__(self, name: str, components_data: List[Dict[str, Any]],
-                 offers_added: int, offers_updated: int, offers_deleted: int,
-                 started_at: datetime, finished_at: datetime):
+    def __init__(self, name: str, components_data: List[Dict[str, Any]]):
         self.name = name
         self.components_data = components_data
-        self.offers_added = offers_added
-        self.offers_updated = offers_updated
-        self.offers_deleted = offers_deleted
-        self.started_at = started_at
-        self.finished_at = finished_at
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "components_data": self.components_data,
-            "offers_added": self.offers_added,
-            "offers_updated": self.offers_updated,
-            "offers_deleted": self.offers_deleted,
-            "started_at": self.started_at.isoformat(),
-            "finished_at": self.finished_at.isoformat(),
         }
 
 
@@ -64,12 +52,7 @@ class ComponentData:
 
 
 async def scrape_shop(shop_name: str) -> Optional[ShopData]:
-    """
-    Scrape single shop and return ShopData object.
 
-    Args:
-        shop_name: Name of the shop ('olx', 'allegro', 'allegroLokalne')
-    """
     components_data = None
     started_at = datetime.now()
 
@@ -80,7 +63,7 @@ async def scrape_shop(shop_name: str) -> Optional[ShopData]:
             components_data = await olxApi.main()
         elif shop_name == 'allegro':
             components_data = await allegroApi.main()
-        elif shop_name == 'allegroLokalne':
+        elif shop_name == 'allegroLokalnie':
             components_data = await allegroLokalneApi.main()
         else:
             print(f"Unknown shop: {shop_name}")
@@ -92,12 +75,7 @@ async def scrape_shop(shop_name: str) -> Optional[ShopData]:
         # Create ShopData object
         shop_data = ShopData(
             name=shop_name,
-            components_data=components_data,
-            offers_added=len(components_data),
-            offers_updated=0,
-            offers_deleted=0,
-            started_at=started_at,
-            finished_at=finished_at
+            components_data=components_data
         )
 
         print(f"{shop_name} returned {len(components_data)} total items in {execution_time:.2f}s")
@@ -113,26 +91,11 @@ async def scrape_shop(shop_name: str) -> Optional[ShopData]:
 
 @app.route('/offers', methods=['POST'])
 def get_offers():
-    """
-    Endpoint to scrape offers from specified shops.
-
-    Request body example:
-    {
-        "shops": ["olx", "allegro", "allegroLokalne"]
-    }
-
-    Returns: List[ShopData]
-    """
     data = request.get_json()
     shops = data.get("shops", [])
 
     if not shops:
         return jsonify({
-            "error": "No shops specified. Provide 'shops' array in request body.",
-            "example": {
-                "shops": ["olx", "allegro", "allegroLokalne"]
-            },
-            "available_shops": ["olx", "allegro", "allegroLokalne"]
         }), 400
 
     # Validate shop names
@@ -161,7 +124,8 @@ def get_offers():
 
                 # Send to RabbitMQ
                 try:
-                    pikaConfiguration.send_to_rabbitmq("offers", shop_data.components_data)
+                    print(shop_data.to_dict())
+                    pikaConfiguration.send_to_rabbitmq("offers", shop_data.to_dict())
                 except Exception as e:
                     print(f"Failed to send {shop} data to RabbitMQ: {e}")
 
@@ -183,10 +147,7 @@ def get_offers():
         print(f"Total items: {total_items}")
         print(f"Total execution time: {execution_time:.2f} seconds ({execution_time / 60:.2f} minutes)")
         print(f"{'=' * 60}\n")
-
-        # Return list of ShopData as dictionaries
-        return jsonify([shop.to_dict() for shop in shop_data_list])
-
+        return '', 204
     except Exception as e:
         print(f"Error in get_offers(): {e}")
         import traceback

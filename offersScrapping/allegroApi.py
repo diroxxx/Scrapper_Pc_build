@@ -148,7 +148,8 @@ async def scrape_category(page, category_name):
                     "url": str(website_url),
                     "shop": "allegro"
                 }
-                all_components[category_name].append(comp)
+                if comp["brand"] is not None and comp["model"] is not None:
+                    all_components[category_name].append(comp)
 
         except Exception as e:
             print(f"{i}. Błąd: {e}")
