@@ -74,7 +74,7 @@ async def scrape_category(page, category_name):
                     "status": 'USED',
                     "img": img_src,
                     "url": url,
-                    "shop": "allegro_lokalnie"
+                    "shop": "allegroLokalnie"
                 }
 
                 if comp["brand"] is not None and comp["model"] is not None:

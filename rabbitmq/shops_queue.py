@@ -67,8 +67,8 @@ async def handle_scraping_task(update_id: int, shop: str):
             "componentsData": result.get("components_data", result.get("componentsData", [])),
         }
 
-        send_to_rabbitmq(f"offersAdded.{shop.lower()}", payload)
-        print(f"Sent offersAdded.{shop.lower()} for updateId={update_id}")
+        send_to_rabbitmq(f"offersAdded.{shop}", payload)
+        print(f"Sent offersAdded.{shop} for updateId={update_id}")
 
     except Exception as e:
         print(f"Error in handle_scraping_task for {shop}: {e}")
@@ -85,8 +85,8 @@ async def handle_check_task(update_id: int, shop: str, urls: list[str]):
             "urls": offers_to_delete
         }
 
-        send_to_rabbitmq(f"offersDeleted.{shop.lower()}", payload)
-        print(f"Sent offersDeleted.{shop.lower()} with {len(offers_to_delete)} offers to delete")
+        send_to_rabbitmq(f"offersDeleted.{shop}", payload)
+        print(f"Sent offersDeleted.{shop} with {len(offers_to_delete)} offers to delete")
 
     except Exception as e:
         print(f"Error in handle_check_task for {shop}: {e}")
