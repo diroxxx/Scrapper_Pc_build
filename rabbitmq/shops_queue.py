@@ -48,8 +48,6 @@ async def check_offers_to_delete(offers_urls_list):
     await browser.stop()
     return offers_to_delete
 
-
-
 async def handle_scraping_task(update_id: int, shop: str):
     try:
         print(f"Starting scraping for {shop}, updateId={update_id}")

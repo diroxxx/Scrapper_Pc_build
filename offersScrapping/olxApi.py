@@ -62,34 +62,36 @@ async def scrape_category(page, category_name):
                 if is_bundle_offer(title, category_name):
                     # print(f"Pominięto zestaw: {title}")
                     continue
-                title = clean_title(title, category_name)
+                title_cleaned = clean_title(title, category_name)
 
                 extracted_data = {}
                 if category_name == "graphics_card":
-                    extracted_data = extract_info_from_gpu(title)
+                    extracted_data = extract_info_from_gpu(title_cleaned)
                 elif category_name == "processor":
-                    extracted_data = extract_brand_from_cpu(title)
+                    extracted_data = extract_brand_from_cpu(title_cleaned)
                 elif category_name == "case":
-                    extracted_data = extract_brand_from_case(title)
+                    extracted_data = extract_brand_from_case(title_cleaned)
                 elif category_name == "storage":
-                    extracted_data = extract_brand_from_ssd(title)
+                    extracted_data = extract_brand_from_ssd(title_cleaned)
                 elif category_name == "ram":
-                    extracted_data = extract_brand_from_ram(title)
+                    extracted_data = extract_brand_from_ram(title_cleaned)
                 elif category_name == "power_supply":
-                    extracted_data = extract_brand_from_power_supply(title)
+                    extracted_data = extract_brand_from_power_supply(title_cleaned)
                 elif category_name == "motherboard":
-                    extracted_data = extract_brand_from_motherboard(title)
+                    extracted_data = extract_brand_from_motherboard(title_cleaned)
 
                 comp = {
+                    "title": title,
                     "category": category_name,
                     "brand": extracted_data.get("brand"),
-                    "model": extracted_data.get("model", title),
+                    "model": extracted_data.get("model", title_cleaned),
                     "price": float(price),
                     "status": status_eng,
                     "img": img_src,
                     "url": url,
                     "shop": "olx"
                 }
+                print(comp.get("title"))
                 if comp["brand"] is not None and comp["model"] is not None:
                     all_components[category_name].append(comp)
 

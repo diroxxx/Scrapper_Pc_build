@@ -29,8 +29,9 @@ class ShopData:
 
 
 class ComponentData:
-    def __init__(self, brand: str, model: str, price: float, url: str,
+    def __init__(self, title: str, brand: str, model: str, price: float, url: str,
                  category: str, status: str, img: str):
+        self.title = title
         self.brand = brand
         self.model = model
         self.price = price
@@ -41,6 +42,7 @@ class ComponentData:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "title": self.title,
             "brand": self.brand,
             "model": self.model,
             "price": self.price,
