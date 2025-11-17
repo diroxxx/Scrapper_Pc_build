@@ -1,7 +1,9 @@
+from typing import Any, Dict, List
 import asyncio
 import nodriver as uc
 import re
 from bs4 import BeautifulSoup
+from models.dto_models import ComponentOfferDto
 from validComponentsApi.extract_details import (
     extract_brand_from_gpu, extract_brand_from_cpu, extract_brand_from_case, extract_brand_from_ssd,
     extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard,
@@ -19,8 +21,9 @@ CATEGORIES = {
 }
 
 
-async def scrape_category(page, category_name):
-    all_components = {cat: [] for cat in CATEGORIES}
+async def scrape_category(page, category_name: str) -> List[ComponentOfferDto]:
+    """Scrape a single category and return list of ComponentOfferDto."""
+    components = []
 
     await asyncio.sleep(5)
 
@@ -29,25 +32,24 @@ async def scrape_category(page, category_name):
     cards = soup.select("a.mlc-card.mlc-itembox")
 
     for i, item in enumerate(cards, start=1):
-        price = 0
         try:
             title_el = item.find("h3", class_="mlc-itembox__title")
-            title = title_el.get_text(strip=True) if title_el else "Brak tytułu"
+            title = title_el.get_text(strip=True) if title_el else ""
 
             price_el = item.select_one(".ml-offer-price__dollars")
             price_text = price_el.get_text(strip=True) if price_el else "0"
             price = safe_parse_price(price_text)
 
             href = item.get("href", "")
-            url = f"https://allegrolokalnie.pl{href}" if href else "Brak linku"
+            url = f"https://allegrolokalnie.pl{href}" if href else ""
 
             img = item.select_one(".mlc-itembox__image__wrapper img")
-            img_src = img.get("src", "Brak src")
+            img_src = img.get("src", "") if img else ""
 
             if title:
-                if is_bundle_offer(title,category_name):
-                    # print(f"Pominięto zestaw: {title}")
+                if is_bundle_offer(title, category_name):
                     continue
+                
                 title_cleaned = clean_title(title, category_name)
 
                 extracted_data = {}
@@ -66,47 +68,57 @@ async def scrape_category(page, category_name):
                 elif category_name == "motherboard":
                     extracted_data = extract_brand_from_motherboard(title_cleaned)
 
-                comp = {
-                    "title": title,
-                    "category": category_name,
-                    "brand": extracted_data.get("brand"),
-                    "model": extracted_data.get("model", title_cleaned),
-                    "price": float(price),
-                    "status": 'USED',
-                    "img": img_src,
-                    "url": url,
-                    "shop": "allegroLokalnie"
-                }
+                brand = extracted_data.get("brand")
+                model = extracted_data.get("model", title_cleaned)
 
-                if comp["brand"] is not None and comp["model"] is not None:
-                    all_components[category_name].append(comp)
 
+                component = ComponentOfferDto(
+                    title=title,
+                    brand=brand,
+                    category=category_name,
+                    img=img_src,
+                    model=model,
+                    price=price,
+                    shop="allegroLokalnie",
+                    status="USED",
+                    url=url
+                    )
+                components.append(component)
+                # print(component.title)
 
         except Exception as e:
-            print(f"{i}.Błąd: {e}")
+            print(f"{i}. Błąd w {category_name}: {e}")
 
-    # print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
-    return all_components
+    print(f"Znaleziono {len(components)} ofert w kategorii {category_name}.\n")
+    return components
 
+
+async def main() -> List[ComponentOfferDto]:
+    all_components = []
+    browser = await uc.start(headless=True)
+
+    for category_name, url in CATEGORIES.items():
+        print(f"Pobieram kategorię: {category_name}")
+        page = await browser.get(url)
+        items = await scrape_category(page, category_name)
+        all_components.extend(items)
+
+    browser.stop()
+    print(f"Łącznie znaleziono {len(all_components)} ofert.")
+    return all_components    
 
 def safe_parse_price(price_text: str) -> float:
-    """Safely parse price text to float, handling spaces and various formats."""
     if not price_text or price_text == 0:
         return 0.0
 
-    # Convert to string if not already
     price_str = str(price_text)
 
-    # Remove all spaces and non-breaking spaces
     price_str = price_str.replace(" ", "").replace("\xa0", "")
 
-    # Remove currency symbols
     price_str = price_str.replace("zł", "").replace("PLN", "")
 
-    # Replace comma with dot for decimal separator
     price_str = price_str.replace(",", ".")
 
-    # Remove any remaining non-numeric characters except dot
     price_str = re.sub(r"[^\d.]", "", price_str)
 
     try:
@@ -250,20 +262,6 @@ def is_bundle_offer(title: str,category: str = None) -> bool:
         return True
 
     return False
-
-async def main():
-    all_components = []
-    browser = await uc.start(headless=True)
-
-    for category_name, url in CATEGORIES.items():
-        # print(f"Pobieram kategorię: {category_name}")
-        page = await browser.get(url)
-        items = await scrape_category(page, category_name)
-        all_components.extend(items[category_name])
-
-    # print(f"Łącznie znaleziono {len(all_components)} ofert.")
-    return all_components
-
 
 if __name__ == "__main__":
     uc.loop().run_until_complete(main())

@@ -1,10 +1,11 @@
 import asyncio
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import nodriver as uc
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, unquote
+from models.dto_models import ComponentOfferDto
 from validComponentsApi.extract_details import (
     extract_brand_from_case,
     extract_brand_from_power_supply,
@@ -27,7 +28,6 @@ CATEGORIES = {
 
 
 def _parse_price(text: str) -> float:
-    """Extract numeric price from text like '1 299,99 zł' or '1299 zł'."""
     if not text:
         return 0.0
     text = text.replace("\xa0", " ")
@@ -42,13 +42,10 @@ def _parse_price(text: str) -> float:
 
 
 def _extract_status(item_soup: BeautifulSoup, page_soup: BeautifulSoup) -> str | None:
-    """Try to extract condition (Stan) from the card first, then fall back to page-level soup."""
     status_eng: str | None = None
 
-    # Try within the item card (if Allegro exposes it there)
     stan_dt = item_soup.find("dt", string="Stan")
     if not stan_dt:
-        # Fallback: search on whole page (kept for backward compatibility)
         stan_dt = page_soup.find("dt", string="Stan")
 
     if stan_dt:
@@ -64,8 +61,8 @@ def _extract_status(item_soup: BeautifulSoup, page_soup: BeautifulSoup) -> str |
     return status_eng
 
 
-async def scrape_category(page, category_name):
-    all_components: Dict[str, list[Dict[str, Any]]] = {cat: [] for cat in CATEGORIES}
+async def scrape_category(page, category_name: str) -> List[ComponentOfferDto]:
+    components = []
 
     for _ in range(30):
         await page.evaluate("window.scrollBy(0, window.innerHeight);")
@@ -76,32 +73,19 @@ async def scrape_category(page, category_name):
     soup = BeautifulSoup(html, "html.parser")
     cards = soup.select("article")
 
-    # Map category to enrichment function
-    enrichers = {
-        "graphics_card": extract_info_from_gpu,
-        "processor": extract_brand_from_cpu,
-        "case": extract_brand_from_case,
-        "storage": extract_brand_from_ssd,
-        "ram": extract_brand_from_ram,
-        "power_supply": extract_brand_from_power_supply,
-        "motherboard": extract_brand_from_motherboard,
-    }
-
     for i, item in enumerate(cards, start=1):
         try:
             # Image
             photo_link = item.find("a")
             photo_img = photo_link.find("img") if photo_link else None
-            photo_url = photo_img.get("src", "") if photo_img else "Brak zdjęcia"
+            photo_url = photo_img.get("src", "") if photo_img else ""
 
-            # Title and URL
             title_element = item.find("h2")
             title_link = title_element.find("a") if title_element else None
             title = title_link.get_text(strip=True) if title_link else ""
-            website_url_raw = title_link.get("href", "") if title_link else "Brak linku do strony"
+            website_url_raw = title_link.get("href", "") if title_link else ""
             website_url = clean_allegro_url(website_url_raw)
 
-            # Price
             price: float = 0.0
             price_element = item.find(
                 "span",
@@ -114,13 +98,14 @@ async def scrape_category(page, category_name):
 
             # Status
             status_eng = _extract_status(item, soup)
+            if status_eng == "DEFECTIVE":
+                continue
 
             if title:
                 if is_bundle_offer(title, category_name):
-                    # print(f"Pominięto zestaw: {title}")
                     continue
+                
                 title_cleaned = clean_title(title, category_name)
-
 
                 extracted_data = {}
                 if category_name == "graphics_card":
@@ -138,29 +123,31 @@ async def scrape_category(page, category_name):
                 elif category_name == "motherboard":
                     extracted_data = extract_brand_from_motherboard(title_cleaned)
 
-                comp = {
-                    "title": title,
-                    "category": category_name,
-                    "brand": extracted_data.get("brand"),
-                    "model": extracted_data.get("model", title_cleaned),
-                    "price": float(price),
-                    "status": status_eng,
-                    "img": photo_url,
-                    "url": str(website_url),
-                    "shop": "allegro"
-                }
-                if comp["brand"] is not None and comp["model"] is not None:
-                    all_components[category_name].append(comp)
+                brand = extracted_data.get("brand")
+                model = extracted_data.get("model", title_cleaned)
+
+                component = ComponentOfferDto(
+                    title=title,
+                    brand=brand,
+                    category=category_name,
+                    img=photo_url,
+                    model=model,
+                    price=price,
+                    shop="allegro",
+                    status=status_eng,
+                    url=website_url
+                    )
+                components.append(component)
+                # print(component.title)
 
         except Exception as e:
-            print(f"{i}. Błąd: {e}")
+            print(f"{i}. Błąd w {category_name}: {e}")
 
-    print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
-    return all_components
+    print(f"Znaleziono {len(components)} ofert w kategorii {category_name}.\n")
+    return components 
 
-
-async def main():
-    all_components: list[Dict[str, Any]] = []
+async def main() -> List[ComponentOfferDto]:
+    all_components = []
     browser = await uc.start(headless=False)
 
     for category_name, url in CATEGORIES.items():
@@ -168,11 +155,13 @@ async def main():
         page = await browser.get(url)
         await asyncio.sleep(2)
         items = await scrape_category(page, category_name)
-        all_components.extend(items[category_name])
+        all_components.extend(items)
 
     browser.stop()
-    print(len(all_components))
+    print(f"Łącznie znaleziono {len(all_components)} ofert.")
     return all_components
+
+
 
 
 def clean_allegro_url(url):

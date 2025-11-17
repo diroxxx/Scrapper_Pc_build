@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import nodriver as uc
 import sys
 import os
+import csv
 
 # Add parent directory to Python path to find validComponentsApi
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -276,7 +277,152 @@ async def main():
 
     browser.stop()
     print(len(all_components))
+    
+    # Save to CSV files
+    save_to_csv(all_components)
+    
     return all_components
+
+
+def save_to_csv(components):
+    """Save components to separate CSV files by category"""
+    
+    # Create output directory if it doesn't exist
+    output_dir = os.path.join(os.path.dirname(__file__), 'output')
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Group components by category
+    grouped = {}
+    for comp in components:
+        category = comp.get('category')
+        if category:
+            if category not in grouped:
+                grouped[category] = []
+            grouped[category].append(comp)
+    
+    # Define CSV headers for each category
+    csv_configs = {
+        'processor': {
+            'filename': 'processors.csv',
+            'headers': ['brand', 'model', 'cores', 'threads', 'socket', 'base_clock', 'boost_clock', 'integrated_graphics', 'tdp'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'cores': c.get('cores', ''),
+                'threads': c.get('threads', ''),
+                'socket': c.get('socket', ''),
+                'base_clock': c.get('base_clock', ''),
+                'boost_clock': '',  # Not scraped
+                'integrated_graphics': '',  # Not scraped
+                'tdp': ''  # Not scraped
+            }
+        },
+        'graphics_card': {
+            'filename': 'graphics_cards.csv',
+            'headers': ['brand', 'model', 'vram', 'gddr', 'boost_clock', 'core_clock', 'power_draw', 'length_in_mm'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'vram': c.get('vram', ''),
+                'gddr': c.get('gddr', ''),
+                'boost_clock': '',  # Not scraped
+                'core_clock': '',  # Not scraped
+                'power_draw': c.get('power_draw', ''),
+                'length_in_mm': ''  # Not scraped
+            }
+        },
+        'ram': {
+            'filename': 'memory.csv',
+            'headers': ['brand', 'model', 'type', 'capacity', 'speed', 'latency', 'amount'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'type': c.get('type', ''),
+                'capacity': c.get('capacity', ''),
+                'speed': c.get('speed', ''),
+                'latency': c.get('latency', ''),
+                'amount': ''  # Not scraped
+            }
+        },
+        'case': {
+            'filename': 'cases.csv',
+            'headers': ['brand', 'model', 'format'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'format': c.get('format', '')
+            }
+        },
+        'ssd': {
+            'filename': 'storage.csv',
+            'headers': ['brand', 'model', 'capacity'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'capacity': c.get('capacity', '')
+            }
+        },
+        'power_supply': {
+            'filename': 'power_supplies.csv',
+            'headers': ['brand', 'model', 'modular', 'type', 'efficiency_rating', 'max_power_watt'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'modular': '',  # Not scraped
+                'type': '',  # Not scraped
+                'efficiency_rating': '',  # Not scraped
+                'max_power_watt': c.get('maxPowerWatt', '')
+            }
+        },
+        'cpu_cooler': {
+            'filename': 'coolers.csv',
+            'headers': ['brand', 'model', 'cooler_sockets_type', 'fan_rpm', 'noise_level', 'radiator_size'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'cooler_sockets_type': ';'.join(c.get('sockets', [])) if c.get('sockets') else '',
+                'fan_rpm': '',  # Not scraped
+                'noise_level': '',  # Not scraped
+                'radiator_size': ''  # Not scraped
+            }
+        },
+        'motherboard': {
+            'filename': 'motherboards.csv',
+            'headers': ['brand', 'model', 'chipset', 'socket_type', 'format', 'ram_slots', 'ram_capacity', 'memory_type'],
+            'mapper': lambda c: {
+                'brand': c.get('brand', ''),
+                'model': c.get('model', ''),
+                'chipset': c.get('chipset', ''),
+                'socket_type': c.get('socket_motherboard', ''),
+                'format': c.get('format', ''),
+                'ram_slots': c.get('ramslots', ''),
+                'ram_capacity': c.get('memory_capacity', ''),
+                'memory_type': c.get('memory_type', '')
+            }
+        }
+    }
+    
+    # Write CSV files
+    for category, items in grouped.items():
+        if category not in csv_configs:
+            print(f"Warning: No CSV config for category '{category}'")
+            continue
+            
+        config = csv_configs[category]
+        filepath = os.path.join(output_dir, config['filename'])
+        
+        try:
+            with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=config['headers'])
+                writer.writeheader()
+                
+                for item in items:
+                    row = config['mapper'](item)
+                    writer.writerow(row)
+            
+            print(f"Saved {len(items)} items to {filepath}")
+        except Exception as e:
+            print(f"Error writing CSV for {category}: {e}")
 
 
 if __name__ == "__main__":

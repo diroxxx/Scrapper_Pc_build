@@ -7,6 +7,7 @@ from validComponentsApi.extract_details import (
     extract_brand_from_ram, extract_brand_from_power_supply, extract_brand_from_motherboard,
     extract_info_from_gpu
 )
+from models.dto_models import ComponentOfferDto
 
 CATEGORIES = {
     "processor": "https://www.olx.pl/elektronika/komputery/podzespoly-i-czesci/procesory/q-procesor/",
@@ -19,7 +20,7 @@ CATEGORIES = {
 }
 
 async def scrape_category(page, category_name):
-    all_components = {cat: [] for cat in CATEGORIES}
+    components = []
 
     for _ in range(20):
         await page.evaluate("window.scrollBy(0, window.innerHeight);")
@@ -51,12 +52,16 @@ async def scrape_category(page, category_name):
             status = status_span.getText(strip=True) if status_span else "Nieznany"
             # print(status)
             status_eng = None
+
+
             if status.lower() == "używane":
                 status_eng = "USED"
             elif status.lower() == "nowe":
                 status_eng = "NEW"
             else:
-                status_eng = "DEFECTIVE"
+                continue
+
+
 
             if title:
                 if is_bundle_offer(title, category_name):
@@ -80,28 +85,27 @@ async def scrape_category(page, category_name):
                 elif category_name == "motherboard":
                     extracted_data = extract_brand_from_motherboard(title_cleaned)
 
-                comp = {
-                    "title": title,
-                    "category": category_name,
-                    "brand": extracted_data.get("brand"),
-                    "model": extracted_data.get("model", title_cleaned),
-                    "price": float(price),
-                    "status": status_eng,
-                    "img": img_src,
-                    "url": url,
-                    "shop": "olx"
-                }
-                print(comp.get("title"))
-                if comp["brand"] is not None and comp["model"] is not None:
-                    all_components[category_name].append(comp)
+                brand = extracted_data.get("brand")
+                model = extracted_data.get("model", title_cleaned)
+
+                component = ComponentOfferDto(
+                        title=title,
+                        brand=brand,
+                        category=category_name,
+                        img=img_src,
+                        model=model,
+                        price= float (price),
+                        shop="olx",
+                        status=status_eng,
+                        url=url
+                        )
+                components.append(component)
 
         except Exception as e:
             print(f"Błąd w {category_name}: {e}")
 
     # print(f"Znaleziono {len(all_components[category_name])} ofert w kategorii {category_name}.\n")
-    return all_components
-
-
+    return components
 
 def clean_title(title: str, category: str) -> str:
     if not title:
@@ -249,7 +253,7 @@ async def main():
         # print(f"Pobieram kategorię: {category_name}")
         page = await browser.get(url)
         items = await scrape_category(page, category_name)
-        all_components.extend(items[category_name])
+        all_components.extend(items)
 
     # print(len(all_components))
     return all_components

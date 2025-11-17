@@ -4,69 +4,31 @@ import asyncio
 from typing import List, Dict, Any, Optional
 import pikaConfiguration
 from datetime import datetime
+from models.dto_models import ComponentOfferDto, ScrapingOfferDto
 
 from offersScrapping import allegroApi
 from offersScrapping import olxApi
-from offersScrapping import allegroLokalneApi
+from offersScrapping import allegroLokalnieApi
 
 app = Flask(__name__)
 
-CATEGORIES = [
-    "processor", "graphics_card", "ram", "case", "storage", "power_supply", "motherboard"
-]
+VALID_SHOPS = ["olx", "allegro", "allegroLokalnie"]
 
+async def scrape_shop(shop_name: str, update_id: Optional[int] = None) -> Optional[ScrapingOfferDto]:
 
-class ShopData:
-    def __init__(self, name: str, components_data: List[Dict[str, Any]]):
-        self.name = name
-        self.components_data = components_data
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "name": self.name,
-            "components_data": self.components_data,
-        }
-
-
-class ComponentData:
-    def __init__(self, title: str, brand: str, model: str, price: float, url: str,
-                 category: str, status: str, img: str):
-        self.title = title
-        self.brand = brand
-        self.model = model
-        self.price = price
-        self.url = url
-        self.category = category
-        self.status = status
-        self.img = img
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "title": self.title,
-            "brand": self.brand,
-            "model": self.model,
-            "price": self.price,
-            "url": self.url,
-            "category": self.category,
-            "status": self.status,
-            "img": self.img
-        }
-
-
-async def scrape_shop(shop_name: str) -> Optional[ShopData]:
-
-    components_data = None
     started_at = datetime.now()
 
     try:
         print(f"Starting to scrape {shop_name}...")
 
+        components_data: List[ComponentOfferDto] = []
+        
         if shop_name == 'olx':
             components_data = await olxApi.main()
         elif shop_name == 'allegro':
             components_data = await allegroApi.main()
         elif shop_name == 'allegroLokalnie':
-            components_data = await allegroLokalneApi.main()
+            components_data = await allegroLokalnieApi.main()
         else:
             print(f"Unknown shop: {shop_name}")
             return None
@@ -74,13 +36,19 @@ async def scrape_shop(shop_name: str) -> Optional[ShopData]:
         finished_at = datetime.now()
         execution_time = (finished_at - started_at).total_seconds()
 
-        # Create ShopData object
-        shop_data = ShopData(
-            name=shop_name,
-            components_data=components_data
+        if components_data and not isinstance(components_data[0], ComponentOfferDto):
+            components_data = [
+                ComponentOfferDto.from_dict(comp) if isinstance(comp, dict) else comp
+                for comp in components_data
+            ]
+
+        shop_data = ScrapingOfferDto(
+            updateId=update_id or 0,
+            shopName=shop_name,
+            componentsData=components_data
         )
 
-        print(f"{shop_name} returned {len(components_data)} total items in {execution_time:.2f}s")
+        print(f"{shop_name} returned {len(components_data)} items in {execution_time:.2f}s")
 
         return shop_data
 
@@ -97,16 +65,13 @@ def get_offers():
     shops = data.get("shops", [])
 
     if not shops:
-        return jsonify({
-        }), 400
+        return jsonify({"error": "No shops specified"}), 400
 
-    # Validate shop names
-    valid_shops = ["olx", "allegro", "allegroLokalne"]
-    invalid_shops = [shop for shop in shops if shop not in valid_shops]
+    invalid_shops = [shop for shop in shops if shop not in VALID_SHOPS]
     if invalid_shops:
         return jsonify({
             "error": f"Invalid shop names: {invalid_shops}",
-            "available_shops": valid_shops
+            "available_shops": VALID_SHOPS
         }), 400
 
     start_time = time.perf_counter()
@@ -115,8 +80,7 @@ def get_offers():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        # Scrape all requested shops
-        shop_data_list: List[ShopData] = []
+        shop_data_list: List[ScrapingOfferDto] = []
 
         for shop in shops:
             shop_data = loop.run_until_complete(scrape_shop(shop))
@@ -124,9 +88,7 @@ def get_offers():
             if shop_data is not None:
                 shop_data_list.append(shop_data)
 
-                # Send to RabbitMQ
                 try:
-                    print(shop_data.to_dict())
                     pikaConfiguration.send_to_rabbitmq("offers", shop_data.to_dict())
                 except Exception as e:
                     print(f"Failed to send {shop} data to RabbitMQ: {e}")
@@ -136,20 +98,19 @@ def get_offers():
         end_time = time.perf_counter()
         execution_time = end_time - start_time
 
-        # Print summary
+        # Podsumowanie
         print(f"\n{'=' * 60}")
         print(f"SCRAPING SUMMARY")
         print(f"{'=' * 60}")
-        total_items = 0
+        total_items = sum(len(sd.componentsData) for sd in shop_data_list)
         for shop_data in shop_data_list:
-            items_count = len(shop_data.components_data)
-            total_items += items_count
-            shop_exec_time = (shop_data.finished_at - shop_data.started_at).total_seconds()
-            print(f"{shop_data.name}: {items_count} items in {shop_exec_time:.2f}s")
+            print(f"{shop_data.shopName}: {len(shop_data.componentsData)} items")
         print(f"Total items: {total_items}")
-        print(f"Total execution time: {execution_time:.2f} seconds ({execution_time / 60:.2f} minutes)")
+        print(f"Total execution time: {execution_time:.2f}s ({execution_time / 60:.2f}m)")
         print(f"{'=' * 60}\n")
+        
         return '', 204
+        
     except Exception as e:
         print(f"Error in get_offers(): {e}")
         import traceback
