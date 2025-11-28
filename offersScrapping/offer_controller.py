@@ -6,7 +6,7 @@ import pikaConfiguration
 from datetime import datetime
 from models.dto_models import ComponentOfferDto, ScrapingOfferDto
 
-from offersScrapping import allegroApi
+from offersScrapping import allegroApi, xkomApi
 from offersScrapping import olxApi
 from offersScrapping import allegroLokalnieApi
 
@@ -29,6 +29,8 @@ async def scrape_shop(shop_name: str, update_id: Optional[int] = None) -> Option
             components_data = await allegroApi.main()
         elif shop_name == 'allegroLokalnie':
             components_data = await allegroLokalnieApi.main()
+        elif shop_name == 'x-kom':
+            components_data = await xkomApi.main()
         else:
             print(f"Unknown shop: {shop_name}")
             return None

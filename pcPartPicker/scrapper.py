@@ -50,7 +50,6 @@ def extract_processor_specs_from_row(row):
             label.extract()
             value = cell.get_text(strip=True)
             
-            # Map to our field names
             field_map = {
                 'Core Count': 'core_count',
                 'Performance Core Clock': 'performance_core_clock',
@@ -63,28 +62,22 @@ def extract_processor_specs_from_row(row):
             if key in field_map:
                 specs[field_map[key]] = value
     
-    # Extract manufacturer from name (usually first word)
     if 'name' in specs:
         parts = specs['name'].split()
         if parts:
             specs['manufacturer'] = parts[0]
-            # Model is everything after manufacturer
             specs['model'] = ' '.join(parts[1:]) if len(parts) > 1 else specs['name']
     
     return specs
 
 
 def extract_component_info_from_row(row, category_name):
-    """Extract component information from table row based on category"""
     try:
         component_info = {}
         
-        # Category-specific extraction
         if category_name == "processor":
             component_info = extract_processor_specs_from_row(row)
-        # Add other categories here as needed
         else:
-            # Generic extraction for other categories
             name_element = row.select_one('.td__name p')
             if name_element:
                 component_info['name'] = name_element.get_text(strip=True)
@@ -115,7 +108,6 @@ async def scrape_category(browser, page, category_name):
         print(f"Scraping page {current_page} of category {category_name}")
         print(f"{'#'*60}")
         
-        # Scroll to load more content
         for i in range(10):
             await page.evaluate("window.scrollBy(0, window.innerHeight);")
             await random_delay(0.5, 1.5)
@@ -125,7 +117,6 @@ async def scrape_category(browser, page, category_name):
         html = await page.get_content()
         soup = BeautifulSoup(html, "html.parser")
         
-        # Find all product rows
         rows = soup.select("tr.tr__product")
         print(f"Found {len(rows)} products on page {current_page}\n")
 
@@ -134,14 +125,12 @@ async def scrape_category(browser, page, category_name):
             has_more_pages = False
             break
 
-        # Process each row directly
         for i, row in enumerate(rows, start=1):
             try:
                 print(f"\n{'='*60}")
                 print(f"Processing product {i}/{len(rows)} on page {current_page}")
                 print(f"{'='*60}")
                 
-                # Extract component information from the row
                 component_info = extract_component_info_from_row(row, category_name)
                 
                 if component_info:
@@ -152,24 +141,20 @@ async def scrape_category(browser, page, category_name):
                             print(f"  {key.replace('_', ' ').title()}: {value}")
                     
                     all_components[category_name].append(component_info)
-                    print(f"✓ Component added successfully!")
+                    print(f"Component added successfully!")
                 else:
-                    print("❌ Failed to extract component info")
+                    print("Failed to extract component info")
 
             except Exception as e:
-                print(f"❌ Error processing row: {e}")
+                print(f" Error processing row: {e}")
 
-        # Check if there's a next page in pagination
-        # Look for the next page number (current + 1)
         next_page_num = current_page + 1
         next_page_link = soup.select_one(f'ul.pagination a[href="#page={next_page_num}"]')
         
         if next_page_link:
             print(f"\n→ Moving to page {next_page_num}")
             
-            # Click on the next page link using JavaScript
             try:
-                # Find and click the link on the actual page
                 await page.evaluate(f'''
                     const link = document.querySelector('a[href="#page={next_page_num}"]');
                     if (link) {{
@@ -177,10 +162,8 @@ async def scrape_category(browser, page, category_name):
                     }}
                 ''')
                 
-                # Wait for page to load
                 await random_delay(3, 6)
                 
-                # Scroll to top to ensure content loads
                 await page.evaluate("window.scrollTo(0, 0);")
                 await random_delay(1, 2)
                 
@@ -197,42 +180,35 @@ async def scrape_category(browser, page, category_name):
 
 
 def save_to_csv(components, category_name):
-    """Save components to CSV file"""
     if not components:
         print(f"No components to save for {category_name}")
         return
     
-    # Create output directory if it doesn't exist
     output_dir = os.path.join(current_dir, "scraped_data")
     os.makedirs(output_dir, exist_ok=True)
     
-    # Generate filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = os.path.join(output_dir, f"{category_name}_{timestamp}.csv")
     
-    # Get all unique keys from all components to create column headers
     all_keys = set()
     for component in components:
         all_keys.update(component.keys())
     
-    # Sort keys to have consistent column order (name and manufacturer first)
     priority_keys = ['name', 'manufacturer', 'model']
     sorted_keys = [k for k in priority_keys if k in all_keys]
     sorted_keys.extend(sorted([k for k in all_keys if k not in priority_keys]))
     
-    # Write to CSV
     with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=sorted_keys)
         writer.writeheader()
         writer.writerows(components)
     
-    print(f"\n✓ Saved {len(components)} components to {filename}")
+    print(f"\n Saved {len(components)} components to {filename}")
 
 
 async def main():
     all_components_by_category = {}
     
-    # Configure browser with more human-like settings
     browser = await uc.start(
         headless=False,
         user_data_dir=None,
@@ -270,8 +246,7 @@ async def main():
                 
                 mapped_key = category_key_map.get(category_name, category_name)
                 all_components_by_category[mapped_key] = items[category_name]
-                
-                # Save to CSV after scraping each category
+
                 save_to_csv(items[category_name], category_name)
                 
                 print(f"Completed category {category_name}. Components scraped: {len(items[category_name])}")
@@ -287,7 +262,6 @@ async def main():
         if browser:
             browser.stop()
     
-    # Print summary
     total_components = sum(len(components) for components in all_components_by_category.values())
     print(f"\n=== SUMMARY ===")
     for category, components in all_components_by_category.items():

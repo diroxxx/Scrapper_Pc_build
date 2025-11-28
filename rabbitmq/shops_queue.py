@@ -1,9 +1,15 @@
+import re
+import sys
+from pathlib import Path
+
+root_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(root_dir))
 import asyncio
 import threading
 import json
 import traceback
 import pika
-from typing import Any, List
+from typing import List
 
 from offersScrapping import offer_controller
 from bs4 import BeautifulSoup
@@ -18,7 +24,7 @@ def start_background_loop(loop):
 
 threading.Thread(target=start_background_loop, args=(event_loop,), daemon=True).start()
 
-SUPPORTED_SHOPS = ["olx", "allegro", "allegroLokalnie"]
+SUPPORTED_SHOPS = ["olx", "allegro", "allegroLokalnie", "x-kom"]
 
 
 def send_to_rabbitmq(queue_name: str, payload: dict):
@@ -37,7 +43,6 @@ def send_to_rabbitmq(queue_name: str, payload: dict):
     )
     connection.close()
 
-
 async def check_offers_to_delete(offers_urls_list: List[str]) -> List[str]:
     offers_to_delete = []
     browser = None
@@ -48,69 +53,40 @@ async def check_offers_to_delete(offers_urls_list: List[str]) -> List[str]:
         for url in offers_urls_list:
             try:
                 page = await browser.get(url)
+
+                for _ in range(4):
+                    await page.evaluate("window.scrollBy(0, window.innerHeight);")
+                    await asyncio.sleep(1)
+
                 html = await page.get_content()
                 soup = BeautifulSoup(html, "html.parser")
-                
                 is_expired = False
                 
                 if "olx.pl" in url:
-                    expired_indicators = [
-                        soup.find("h1", string=lambda text: text and "ogłoszenie nieaktualne" in text.lower()),
-                        soup.find("div", string=lambda text: text and "ogłoszenie już nieaktywne" in text.lower()),
-                        soup.find("p", string=lambda text: text and "oferta wygasła" in text.lower()),
-                    ]
-                    
-                    # Sprawdź czy strona zawiera główną zawartość oferty
-                    ad_content = soup.find("div", {"data-testid": "ad-page-content"})
-                    ad_title = soup.find("h1", {"data-cy": "ad_title"})
-                    
-                    # Oferta jest wygasła jeśli:
-                    # 1. Jest komunikat o wygaśnięciu ORAZ
-                    # 2. Brak głównej zawartości (tytuł lub content)
-                    has_expired_message = any(indicator is not None for indicator in expired_indicators)
-                    has_content = ad_content is not None or ad_title is not None
-                    
-                    is_expired = has_expired_message and not has_content
-                
-                # Allegro - sprawdź status oferty
+
+                    expired = soup.find("h4", string=lambda t: "to ogłoszenie nie jest już dostępne" in t.lower() if t else False)
+                    if expired:
+                        is_expired = True
+
                 elif "allegro.pl" in url and "lokalnie" not in url:
-                    # Sprawdź czy oferta ma przycisk "kup" lub "do koszyka"
-                    buy_button = soup.find("button", {"data-role": "buy-button"}) or \
-                                soup.find("button", string=lambda text: text and "kup" in text.lower())
-                    
-                    # Sprawdź komunikaty o zakończeniu
-                    ended_indicators = [
-                        soup.find("div", string=lambda text: text and "oferta zakończona" in text.lower()),
-                        soup.find("p", string=lambda text: text and "ta oferta już się skończyła" in text.lower()),
-                    ]
-                    
-                    has_ended_message = any(indicator is not None for indicator in ended_indicators)
-                    
-                    # Oferta zakończona jeśli jest komunikat ORAZ brak przycisku kupna
-                    is_expired = has_ended_message and buy_button is None
-                
-                # Allegro Lokalnie
+
+                    expired = soup.find("h6", string=lambda t: "sprzedaż zakończona" in t.lower() if t else False)
+                    if expired:
+                        is_expired = True
+
                 elif "allegro.pl/lokalnie" in url or "allegrolokalnie.pl" in url:
-                    # Sprawdź tytuł oferty
-                    title = soup.find("h1", {"data-testid": "offer-title"}) or soup.find("h1")
-                    
-                    # Komunikaty o zakończeniu
-                    ended_indicators = [
-                        soup.find("div", string=lambda text: text and "ogłoszenie zakończone" in text.lower()),
-                        soup.find("p", string=lambda text: text and "nieaktywne" in text.lower()),
-                    ]
-                    
-                    has_ended_message = any(indicator is not None for indicator in ended_indicators)
-                    
-                    # Oferta nieaktywna jeśli jest komunikat ORAZ brak tytułu
-                    is_expired = has_ended_message and title is None
-                
+
+                    el = soup.find("div", class_="mlc-offer-ended-banner")
+                    if el:
+                        is_expired = True
+
+                    # if not el:
+                    #     print("nie ", el)
+                    #     el = soup.find("div", class_=re.compile(r"mlc-.*ended-banner"))
+
                 if is_expired:
                     offers_to_delete.append(url)
-                    # print(f"Offer expired: {url}")
-                # else:
-                    # print(f"Offer still active: {url}")
-                    
+
             except Exception as e:
                 print(f"Error while checking {url}: {e}")
                 traceback.print_exc()
@@ -129,7 +105,6 @@ async def check_offers_to_delete(offers_urls_list: List[str]) -> List[str]:
                 print(f"Error stopping browser: {e}")
     
     return offers_to_delete
-
 
 async def handle_scraping_task(update_id: int, shop: str):
     try:
@@ -154,7 +129,6 @@ async def handle_check_task(update_id: int, shop: str, urls: List[str]):
     try:
         print(f"Checking offers for {shop}, urls={len(urls)}")
         
-        # Jeśli lista jest pusta, od razu wysyłamy pustą odpowiedź
         if not urls or len(urls) == 0:
             print(f"No URLs to check for {shop}, sending empty result")
             payload = {

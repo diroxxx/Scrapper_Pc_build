@@ -8,3 +8,5 @@ __pycache__/allegroApi.cpython-312.pyc
 __pycache__/allegroLokalneApi.cpython-312.pyc
 validComponentsApi/__pycache__/extract_details.cpython-312.pyc
 __pycache__/olxApi.cpython-312.pyc
+
+.fake
