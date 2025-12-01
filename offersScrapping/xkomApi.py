@@ -42,7 +42,7 @@ async def scrape_category(page, category_name):
         try:
             h3 = item.find('h3', {'title': True})
             title = h3.get('title')
-            # print(title)
+            print(title)
 
             price_div = soup.find('div', {'data-name': 'productPrice'})
             price = 0.0
@@ -107,7 +107,7 @@ async def scrape_category(page, category_name):
 
 async def main():
     all_components = []
-    browser = await uc.start(headless=False)
+    browser = await uc.start(headless=True)
 
     for category_name, url in CATEGORIES.items():
         page = await browser.get(url)
