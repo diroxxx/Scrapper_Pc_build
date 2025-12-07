@@ -64,8 +64,9 @@ async def check_offers_to_delete(offers_urls_list: List[str]) -> List[str]:
                 
                 if "olx.pl" in url:
 
-                    expired = soup.find("h4", string=lambda t: "to ogłoszenie nie jest już dostępne" in t.lower() if t else False)
-                    if expired:
+                    expired_h4 = soup.find("h4", string=lambda t: "to ogłoszenie nie jest już dostępne" in t.lower() if t else False)
+                    expired_h3 = soup.find("h3", string=lambda t: "wygląda na to, że strona nie istnieje" in t.lower() if t else False)
+                    if expired_h4 | expired_h3:
                         is_expired = True
 
                 elif "allegro.pl" in url and "lokalnie" not in url:

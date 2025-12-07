@@ -107,7 +107,7 @@ async def scrape_category(page, category_name):
 
 async def main():
     all_components = []
-    browser = await uc.start(headless=True)
+    browser = await uc.start(headless=False)
 
     for category_name, url in CATEGORIES.items():
         page = await browser.get(url)
