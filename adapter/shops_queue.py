@@ -11,10 +11,10 @@ import traceback
 import pika
 from typing import List
 
-from offersScrapping import offer_controller
+from service import offer_controller
 from bs4 import BeautifulSoup
 import nodriver as uc
-from models.dto_models import ScrapingOfferDto
+from model.dto_models import ScrapingOfferDto
 
 event_loop = asyncio.new_event_loop()
 
@@ -48,7 +48,7 @@ async def check_offers_to_delete(offers_urls_list: List[str]) -> List[str]:
     browser = None
     
     try:
-        browser = await uc.start(headless=True)
+        browser = await uc.start(headless= False)
         
         for url in offers_urls_list:
             try:

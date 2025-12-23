@@ -224,7 +224,7 @@ def extract_brand_from_ram(title: str) -> dict:
         # Usuń typy RAM
         ram_types = ["ddr4", "ddr5", "ddr3"]
         for ram_type in ram_types:
-            title = title.replace(ram_type, "")
+            title = title.replace(  ram_type, "")
 
         # Usuń prędkości np. 2400, 3200, 3600 itd.
         title = re.sub(r"\b\d{3,4}\b", "", title)

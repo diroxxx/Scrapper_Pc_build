@@ -9,8 +9,8 @@ from typing import Any, Dict, List
 import nodriver as uc
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, unquote
-from models.dto_models import ComponentOfferDto
-from validComponentsApi.extract_details import (
+from model.dto_models import ComponentOfferDto
+from helpers.extract_details import (
     extract_brand_from_case,
     extract_brand_from_power_supply,
     extract_brand_from_motherboard,
@@ -20,7 +20,7 @@ from validComponentsApi.extract_details import (
     extract_info_from_gpu,
 )
 import re
-from offersScrapping.clean_methods import (is_bundle_offer, clean_title)
+from service.clean_methods import (is_bundle_offer, clean_title)
 
 CATEGORIES = {
     "processor": "https://allegro.pl/kategoria/podzespoly-komputerowe-procesory-257222",

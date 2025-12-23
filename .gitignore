@@ -1,12 +1,12 @@
 __pycache__/allegroLokalneApi.cpython-311.pyc
-validComponentsApi/__pycache__/extract_details.cpython-311.pyc
+helpers/__pycache__/extract_details.cpython-311.pyc
 __pycache__/olxApi.cpython-311.pyc
 __pycache__/controller.cpython-311.pyc
 __pycache__/allegroApi.cpython-311.pyc
 requirements.txt
 __pycache__/allegroApi.cpython-312.pyc
 __pycache__/allegroLokalneApi.cpython-312.pyc
-validComponentsApi/__pycache__/extract_details.cpython-312.pyc
+helpers/__pycache__/extract_details.cpython-312.pyc
 __pycache__/olxApi.cpython-312.pyc
 
 .fake

@@ -1,14 +1,14 @@
 import time
 from flask import Flask, jsonify, request
 import asyncio
-from typing import List, Dict, Any, Optional
-import pikaConfiguration
+from typing import List, Optional
+from config import pikaConfiguration
 from datetime import datetime
-from models.dto_models import ComponentOfferDto, ScrapingOfferDto
+from model.dto_models import ComponentOfferDto, ScrapingOfferDto
 
-from offersScrapping import allegroApi, xkomApi
-from offersScrapping import olxApi
-from offersScrapping import allegroLokalnieApi
+from service import allegroApi, xkomApi
+from service import olxApi
+from service import allegroLokalnieApi
 
 app = Flask(__name__)
 
